@@ -1,7 +1,7 @@
 {
     "name": "smp-imsc",
     "description": "SMP fork of imsc js",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "publishConfig": {
         "tag": "latest"
     },
@@ -30,7 +30,7 @@
     "main": "src/main/js/main.js",
     "scripts": {
         "prepublishOnly": "grunt build:release",
-        "version": "grunt build:release && gulp && git add -A dist pom.xml",
+        "version": "grunt build:release && gulp && git add -A dist && git add pom.xml",
         "postversion": "git push --tags"
     },
     "dependencies": {
