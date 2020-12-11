@@ -67,6 +67,7 @@
      * @param {?module:imscUtils.ErrorHandler} errorHandler Error callback
      * @param {Object} previousISDState State saved during processing of the previous ISD, or null if initial call
      * @param {?boolean} enableRollUp Enables roll-up animations (see CEA 708)
+     * @param {Number} sizeAdjust Amount by which to scale (multiply) text size
      * @return {Object} ISD state to be provided when this funtion is called for the next ISD
      */
 
@@ -78,7 +79,8 @@
             displayForcedOnlyMode,
             errorHandler,
             previousISDState,
-            enableRollUp
+            enableRollUp,
+            sizeAdjust
             ) {
 
         /* maintain aspect ratio if specified */
@@ -133,7 +135,8 @@
             bpd: null, /* block progression direction (lr, rl, tb) */
             ruby: null, /* is ruby present in a <p> */
             textEmphasis: null, /* is textEmphasis present in a <p> */
-            rubyReserve: null /* is rubyReserve applicable to a <p> */
+            rubyReserve: null, /* is rubyReserve applicable to a <p> */
+            sizeAdjust: sizeAdjust /* null or 1 makes no change */
         };
 
         element.appendChild(rootcontainer);
@@ -309,7 +312,7 @@
 
         if (lp && (! lp.isZero())) {
 
-            var plength = lp.toUsedLength(context.w, context.h);
+            var plength = lp.multiply(lp.toUsedLength(context.w, context.h), context.sizeAdjust);
 
 
             if (plength > 0) {
@@ -498,7 +501,7 @@
 
             if (context.lp) {
 
-                applyLinePadding(linelist, context.lp.toUsedLength(context.w, context.h), context);
+                applyLinePadding(linelist, context.lp.multiply(context.lp.toUsedLength(context.w, context.h), context.sizeAdjust), context);
 
                 context.lp = null;
 
@@ -1377,7 +1380,7 @@
         new HTMLStylingMapDefintion(
                 "http://www.w3.org/ns/ttml#styling fontSize",
                 function (context, dom_element, isd_element, attr) {
-                    dom_element.style.fontSize = attr.toUsedLength(context.w, context.h) + "px";
+                    dom_element.style.fontSize = attr.multiply(attr.toUsedLength(context.w, context.h), context.sizeAdjust) + "px";
                 }
         ),
 
@@ -1402,7 +1405,7 @@
 
                     } else {
 
-                        dom_element.style.lineHeight = attr.toUsedLength(context.w, context.h) + "px";
+                        dom_element.style.lineHeight = attr.multiply(attr.toUsedLength(context.w, context.h), context.sizeAdjust) + "px";
                     }
                 }
         ),
