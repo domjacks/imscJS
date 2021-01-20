@@ -61,7 +61,7 @@
 
         /* Filter body contents - Only process what we need within the offset and discard regions not applicable to the content */
         var body = {};
-        var regions = new Set();
+        // var regions = new Set();
 
         for (var prop in tt.body) {
             body[prop] = tt.body[prop];
@@ -69,40 +69,121 @@
 
         body.contents = [];
 
-        tt.body.contents.forEach(function (container, index) {
-            var containerContents = container.contents.filter(function (element) {
-                if (!(offset < element.begin || offset >= element.end)) {
-                    if (element.regionID) {
-                        regions.add(element.regionID);
-                    }
-                    return true;
-                }
-                return false;
-            });
+        function filterBodyContent(offset, parent, inherited_region_id, elem) {
 
-            var newContainer = {};
-
-            for (var prop in container) {
-                newContainer[prop] = container[prop];
+            /* prune if temporally inactive */
+        
+            if (offset < elem.begin || offset >= elem.end) {
+                return null;
             }
-
-            newContainer.contents = containerContents;
-
-            body.contents[index] = newContainer;
-        });
-
-        /* This will be a rewritten TTAF1 file, nested elements do not have a regionID */
-        if (regions.length === 0 && tt.head.layout.regions[""]) {
-            regions.add("");
+        
+            /* 
+             * set the associated region as specified by the regionID attribute, or the 
+             * inherited associated region otherwise
+             */
+        
+            var associated_region_id = 'regionID' in elem && elem.regionID !== '' ? elem.regionID : inherited_region_id;
+        
+            /* prune the element if either:
+             * - the element is not terminal and the associated region is neither the default
+             *   region nor the parent region (this allows children to be associated with a 
+             *   region later on)
+             * - the element is terminal and the associated region is not the parent region
+             */
+        
+            /* TODO: improve detection of terminal elements since <region> has no contents */
+        
+            // if (output !== null /* are we in the region element */ &&
+            //     associated_region_id !== region.id &&
+            //     (
+            //         (!('contents' in elem)) ||
+            //         ('contents' in elem && elem.contents.length === 0) ||
+            //         associated_region_id !== ''
+            //         )
+            //     )
+            //     return null;
+        
+            /* create an ISD element, including applying specified styles */
+        
+            var output = {};
+        
+            /* process contents of the element */
+        
+            var contents;
+        
+            if (parent === null) {
+        
+                /* we are processing the region */
+        
+                if (body === null) {
+        
+                    /* if there is no body, still process the region but with empty content */
+        
+                    contents = [];
+        
+                } else {
+        
+                    /*use the body element as contents */
+        
+                    contents = [body];
+        
+                }
+        
+            } else if ('contents' in elem) {
+        
+                contents = elem.contents;
+        
+            }
+        
+            for (var x in contents) {
+        
+                var c = filterBodyContent(offset, output, associated_region_id, contents[x]);
+        
+                /* 
+                 * keep child element only if they are non-null and their region match 
+                 * the region of this element
+                 */
+        
+                if (c !== null) {
+        
+                    output.contents.push(c.element);
+        
+                }
+        
+            }
+        
+                /* keep element if:
+                 * * contains a background image
+                 * * <br/>
+                 * * if there are children
+                 * * if it is an image
+                 * * if <span> and has text
+                 * * if region and showBackground = always
+                 */
+        
+                if ((output.kind === 'div') ||
+                output.kind === 'br' ||
+                output.kind === 'image' ||
+                    ('contents' in output && output.contents.length > 0) ||
+                    (output.kind === 'span' && output.text !== null) ||
+                    (output.kind === 'region')) {
+        
+                    return output;
+                }
+        
+                return null;
         }
+
+        body.contents = filterBodyContent(offset, null, '', tt.body);
+
         
         /* process regions */        
 
-        for (var r in regions) {
+        for (var r in tt.head.layout.regions) {
 
             /* post-order traversal of the body tree per [construct intermediate document] */
 
-            var c = isdProcessContentElement(tt, offset, tt.head.layout.regions[regions[r]], body, null, '', tt.head.layout.regions[regions[r]], errorHandler, context);
+            var c = isdProcessContentElement(tt, offset, tt.head.layout.regions[r], body, null, '', tt.head.layout.regions[r], errorHandler, context);
 
             if (c !== null) {
 
@@ -110,7 +191,6 @@
 
                 isd.contents.push(c.element);
             }
-
 
         }
 
