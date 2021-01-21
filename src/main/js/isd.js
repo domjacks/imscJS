@@ -76,9 +76,10 @@
                 clone.contents = [];
 
                 element.contents.filter(offsetFilter).forEach(function (el) {
-                    
                     var filteredElement = filter(offset, el);
-                    activeRegions.add(filteredElement.regionID);
+                    if (filteredElement.regionID) {
+                        activeRegions.add(filteredElement.regionID);
+                    }
         
                     if (filteredElement !== null) {
                         clone.contents.push(filteredElement);
