@@ -61,120 +61,35 @@
 
         /* Filter body contents - Only process what we need within the offset and discard regions not applicable to the content */
         var body = {};
-        // var regions = new Set();
+        // var activeRegions = new Set();
 
-        for (var prop in tt.body) {
-            body[prop] = tt.body[prop];
+        function filter(offset, element) {
+            function offsetFilter(element) {
+                return !(offset < element.begin || offset >= element.end);    
+            }    
+        
+            if (element.contents) {
+                var clone = {};
+                for (var prop in element) {
+                    clone[prop] = element[prop];
+                }
+                clone.contents = [];
+
+                element.contents.filter(offsetFilter).forEach(function (el) {
+                    
+                    var filteredElement = filter(offset, el);
+        
+                    if (filteredElement !== null) {
+                        clone.contents.push(filteredElement);
+                    }
+                });
+                return clone;
+            } else {
+                return element;
+            }
         }
 
-        body.contents = [];
-
-        function filterBodyContent(offset, parent, inherited_region_id, elem) {
-
-            /* prune if temporally inactive */
-        
-            if (offset < elem.begin || offset >= elem.end) {
-                return null;
-            }
-        
-            /* 
-             * set the associated region as specified by the regionID attribute, or the 
-             * inherited associated region otherwise
-             */
-        
-            var associated_region_id = 'regionID' in elem && elem.regionID !== '' ? elem.regionID : inherited_region_id;
-        
-            /* prune the element if either:
-             * - the element is not terminal and the associated region is neither the default
-             *   region nor the parent region (this allows children to be associated with a 
-             *   region later on)
-             * - the element is terminal and the associated region is not the parent region
-             */
-        
-            /* TODO: improve detection of terminal elements since <region> has no contents */
-        
-            // if (output !== null /* are we in the region element */ &&
-            //     associated_region_id !== region.id &&
-            //     (
-            //         (!('contents' in elem)) ||
-            //         ('contents' in elem && elem.contents.length === 0) ||
-            //         associated_region_id !== ''
-            //         )
-            //     )
-            //     return null;
-        
-            /* create an ISD element, including applying specified styles */
-        
-            var output = {};
-        
-            /* process contents of the element */
-        
-            var contents;
-        
-            if (parent === null) {
-        
-                /* we are processing the region */
-        
-                if (body === null) {
-        
-                    /* if there is no body, still process the region but with empty content */
-        
-                    contents = [];
-        
-                } else {
-        
-                    /*use the body element as contents */
-        
-                    contents = [body];
-        
-                }
-        
-            } else if ('contents' in elem) {
-        
-                contents = elem.contents;
-        
-            }
-        
-            for (var x in contents) {
-        
-                var c = filterBodyContent(offset, output, associated_region_id, contents[x]);
-        
-                /* 
-                 * keep child element only if they are non-null and their region match 
-                 * the region of this element
-                 */
-        
-                if (c !== null) {
-        
-                    output.contents.push(c.element);
-        
-                }
-        
-            }
-        
-                /* keep element if:
-                 * * contains a background image
-                 * * <br/>
-                 * * if there are children
-                 * * if it is an image
-                 * * if <span> and has text
-                 * * if region and showBackground = always
-                 */
-        
-                if ((output.kind === 'div') ||
-                output.kind === 'br' ||
-                output.kind === 'image' ||
-                    ('contents' in output && output.contents.length > 0) ||
-                    (output.kind === 'span' && output.text !== null) ||
-                    (output.kind === 'region')) {
-        
-                    return output;
-                }
-        
-                return null;
-        }
-
-        body.contents = filterBodyContent(offset, null, '', tt.body);
+        body = filter(offset, tt.body);
 
         
         /* process regions */        
