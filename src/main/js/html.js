@@ -224,14 +224,6 @@
 
             }
 
-            var te = isd_element.styleAttrs[imscStyles.byName.textEmphasis.qname];
-
-            if (te && te.style !== "none") {
-
-                context.textEmphasis = true;
-
-            }
-
             //e.textContent = isd_element.text;
 
         } else if (isd_element.kind === 'br') {
@@ -257,25 +249,7 @@
 
         e.style.margin = "0";
 
-        /* tranform TTML styles to CSS styles */
-
-        for (var i in STYLING_MAP_DEFS) {
-
-            var sm = STYLING_MAP_DEFS[i];
-
-            var attr = isd_element.styleAttrs[sm.qname];
-
-            if (attr !== undefined && sm.map !== null) {
-
-                sm.map(context, e, isd_element, attr);
-
-            }
-
-        }
-
-        var proc_e = e;
-
-        /* remember writing direction */
+        /* determine ipd and bpd */
 
         if (isd_element.kind === "region") {
 
@@ -302,8 +276,32 @@
                 context.bpd = "rl";
 
             }
+ 
+        } else if (isd_element.kind === "p" && context.bpd === "tb") {
+
+            var pdir = isd_element.styleAttrs[imscStyles.byName.direction.qname];
+
+            context.ipd = pdir === "ltr" ? "lr" : "rl"; 
+ 
+        }
+
+        /* tranform TTML styles to CSS styles */
+
+        for (var i in STYLING_MAP_DEFS) {
+
+            var sm = STYLING_MAP_DEFS[i];
+
+            var attr = isd_element.styleAttrs[sm.qname];
+
+            if (attr !== undefined && sm.map !== null) {
+
+                sm.map(context, e, isd_element, attr);
+
+            }
 
         }
+
+        var proc_e = e;
 
         /* do we have linePadding ? */
 
@@ -376,11 +374,25 @@
 
         if (isd_element.kind === "span" && isd_element.text) {
 
+            var te = isd_element.styleAttrs[imscStyles.byName.textEmphasis.qname];
+
+            if (te && te.style !== "none") {
+
+                context.textEmphasis = true;
+
+            }
+
             if (imscStyles.byName.textCombine.qname in isd_element.styleAttrs &&
                     isd_element.styleAttrs[imscStyles.byName.textCombine.qname][0] === "all") {
 
                 /* ignore tate-chu-yoku since line break cannot happen within */
                 e.textContent = isd_element.text;
+
+                if (te) {
+
+                    applyTextEmphasis(context, e, isd_element, te);
+
+                };
 
             } else {
 
@@ -401,6 +413,14 @@
                         var span = document.createElement("span");
 
                         span.textContent = cbuf;
+
+                        /* apply textEmphasis */
+                        
+                        if (te) {
+
+                            applyTextEmphasis(context, span, isd_element, te);
+
+                        };
     
                         e.appendChild(span);
 
@@ -458,7 +478,7 @@
 
             if (context.textEmphasis) {
 
-                applyTextEmphasis(linelist, context);
+                applyTextEmphasisOutside(linelist, context);
 
                 context.textEmphasis = null;
 
@@ -635,7 +655,7 @@
 
     }
 
-    function applyTextEmphasis(lineList, context) {
+    function applyTextEmphasisOutside(lineList, context) {
 
         /* supports "outside" only */
 
@@ -645,8 +665,8 @@
 
                 /* skip if position already set */
 
-                if (lineList[i].te[j].style.textEmphasisPosition &&
-                    lineList[i].te[j].style.textEmphasisPosition !== "none")
+                if (lineList[i].te[j].style[TEXTEMPHASISPOSITION_PROP] &&
+                    lineList[i].te[j].style[TEXTEMPHASISPOSITION_PROP] !== "none")
                     continue;
 
                 var pos;
@@ -670,7 +690,7 @@
 
                 }
 
-                lineList[i].te[j].style.textEmphasisPosition = pos;
+                lineList[i].te[j].style[TEXTEMPHASISPOSITION_PROP] = pos;
 
             }
 
@@ -686,12 +706,18 @@
 
                 /* skip if ruby-position already set */
 
-                if (lineList[i].rbc[j].style.rubyPosition)
+                if (lineList[i].rbc[j].style[RUBYPOSITION_PROP])
                     continue;
 
                 var pos;
 
-                if (context.bpd === "tb") {
+                if (RUBYPOSITION_ISWK) {
+
+                    /* WebKit exception */
+
+                    pos = (i === 0) ? "before" : "after";
+
+                } else if (context.bpd === "tb") {
 
                     pos = (i === 0) ? "over" : "under";
 
@@ -710,7 +736,7 @@
 
                 }
 
-                lineList[i].rbc[j].style.rubyPosition = pos;
+                lineList[i].rbc[j].style[RUBYPOSITION_PROP] = pos;
 
             }
 
@@ -734,15 +760,15 @@
 
             var fs = context.rubyReserve[1].toUsedLength(context.w, context.h) + "px";
 
-            if (context.rubyReserve[0] === "both") {
+            if (context.rubyReserve[0] === "both" || (context.rubyReserve[0] === "outside" && lineList.length == 1)) {
 
                 rt1 = document.createElement("rtc");
-                rt1.style.rubyPosition = "under";
+                rt1.style[RUBYPOSITION_PROP] = RUBYPOSITION_ISWK ? "after" : "under";
                 rt1.textContent = "\u200B";
                 rt1.style.fontSize = fs;
 
                 rt2 = document.createElement("rtc");
-                rt2.style.rubyPosition = "over";
+                rt2.style[RUBYPOSITION_PROP] = RUBYPOSITION_ISWK ? "before" : "over";
                 rt2.textContent = "\u200B";
                 rt2.style.fontSize = fs;
 
@@ -755,24 +781,52 @@
                 rt1.textContent = "\u200B";
                 rt1.style.fontSize = fs;
 
+                var pos;
+
                 if (context.rubyReserve[0] === "after" || (context.rubyReserve[0] === "outside" && i > 0)) {
 
-                    rt1.style.rubyPosition = (context.bpd === "tb" || context.bpd === "rl") ? "under" : "over";
+                    pos = RUBYPOSITION_ISWK ? "after" : ((context.bpd === "tb" || context.bpd === "rl") ? "under" : "over");
 
                 } else {
 
-                    rt1.style.rubyPosition = (context.bpd === "tb" || context.bpd === "rl") ? "over" : "under";
+                    pos = RUBYPOSITION_ISWK ? "before" : ((context.bpd === "tb" || context.bpd === "rl") ? "over" : "under");
 
                 }
+
+                rt1.style[RUBYPOSITION_PROP] = pos;
 
                 ruby.appendChild(rt1);
 
             }
 
-            var e = lineList[i].elements[0].node.parentElement.insertBefore(
-                    ruby,
-                    lineList[i].elements[0].node
-                    );
+            /* add in front of the first ruby element of the line, if it exists */
+
+            var sib = null;
+
+            for (var j = 0; j < lineList[i].rbc.length; j++) {
+
+                if (lineList[i].rbc[j].localName === 'ruby') {
+
+                    sib = lineList[i].rbc[j];
+
+                    /* copy specified style properties from the sibling ruby container */
+                    
+                    for(var k = 0; k < sib.style.length; k++) {
+
+                        ruby.style.setProperty(sib.style.item(k), sib.style.getPropertyValue(sib.style.item(k)));
+
+                    }
+
+                    break;
+                }
+
+            }
+
+            /* otherwise add before first span */
+
+            sib = sib || lineList[i].elements[0].node;
+
+            sib.parentElement.insertBefore(ruby, sib);
 
         }
 
@@ -897,32 +951,6 @@
         this.id = id;
 
         this.plist = lineList;
-
-    }
-
-    function pruneEmptySpans(element) {
-
-        var child = element.firstChild;
-
-        while (child) {
-
-            var nchild = child.nextSibling;
-
-            if (child.nodeType === Node.ELEMENT_NODE &&
-                    child.localName === 'span') {
-
-                pruneEmptySpans(child);
-
-                if (child.childElementCount === 0 &&
-                        child.textContent.length === 0) {
-
-                    element.removeChild(child);
-
-                }
-            }
-
-            child = nchild;
-        }
 
     }
 
@@ -1077,8 +1105,8 @@
                         }
 
                     } else if (child.localName === 'span' &&
-                            child.style.textEmphasisStyle &&
-                            child.style.textEmphasisStyle !== "none") {
+                            child.style[TEXTEMPHASISSTYLE_PROP] &&
+                            child.style[TEXTEMPHASISSTYLE_PROP] !== "none") {
 
                         /* remember non-empty span elements with textEmphasis */
 
@@ -1103,6 +1131,56 @@
 
         return ((after1 < after2) && (before1 > before2)) || ((after2 <= after1) && (before2 >= before1));
 
+    }
+
+    function applyTextEmphasis(context, dom_element, isd_element, attr) {
+
+        /* ignore color (not used in IMSC 1.1) */
+
+        if (attr.style === "none") {
+
+            dom_element.style[TEXTEMPHASISSTYLE_PROP] = "none";
+
+            /* no need to set position, so return */
+            
+            return;
+        
+        } else if (attr.style === "auto") {
+
+            dom_element.style[TEXTEMPHASISSTYLE_PROP] = "filled";
+        
+        } else {
+
+            dom_element.style[TEXTEMPHASISSTYLE_PROP] =  attr.style + " " + attr.symbol;
+        }
+
+        /* ignore "outside" position (set in postprocessing) */
+
+        if (attr.position === "before" || attr.position === "after") {
+
+            var pos;
+
+            if (context.bpd === "tb") {
+
+                pos = (attr.position === "before") ? "left over" : "left under";
+
+
+            } else {
+
+                if (context.bpd === "rl") {
+
+                    pos = (attr.position === "before") ? "right under" : "left under";
+
+                } else {
+
+                    pos = (attr.position === "before") ? "left under" : "right under";
+
+                }
+
+            }
+
+            dom_element.style[TEXTEMPHASISPOSITION_PROP] = pos;
+        }
     }
 
     function HTMLStylingMapDefintion(qName, mapFunc) {
@@ -1142,7 +1220,9 @@
         new HTMLStylingMapDefintion(
                 "http://www.w3.org/ns/ttml#styling direction",
                 function (context, dom_element, isd_element, attr) {
+
                     dom_element.style.direction = attr;
+
                 }
         ),
         new HTMLStylingMapDefintion(
@@ -1279,7 +1359,7 @@
 
                     var angle = attr * -0.9;
 
-                    /* context.writingMode is needed since writing mode is not inherited and sets the inline progression */
+                    /* context.bpd is needed since writing mode is not inherited and sets the inline progression */
 
                     if (context.bpd === "tb") {
 
@@ -1373,7 +1453,7 @@
         new HTMLStylingMapDefintion(
                 "http://www.w3.org/ns/ttml#styling rubyAlign",
                 function (context, dom_element, isd_element, attr) {
-                    dom_element.style.rubyAlign = attr;
+                    dom_element.style.rubyAlign = attr === "spaceAround" ? "space-around" : "center";
                 }
         ),
         new HTMLStylingMapDefintion(
@@ -1386,7 +1466,13 @@
 
                         var pos;
 
-                        if (context.bpd === "tb") {
+                        if (RUBYPOSITION_ISWK) {
+
+                            /* WebKit exception */
+        
+                            pos = attr;
+        
+                        } else if (context.bpd === "tb") {
 
                             pos = (attr === "before") ? "over" : "under";
 
@@ -1407,7 +1493,7 @@
 
                         /* apply position to the parent dom_element, i.e. ruby or rtc */
 
-                        dom_element.parentElement.style.rubyPosition = pos;
+                        dom_element.parentElement.style[RUBYPOSITION_PROP] = pos;
                     }
                 }
         ),
@@ -1420,17 +1506,16 @@
                 function (context, dom_element, isd_element, attr) {
 
                     var ta;
-                    var dir = isd_element.styleAttrs[imscStyles.byName.direction.qname];
 
                     /* handle UAs that do not understand start or end */
 
                     if (attr === "start") {
 
-                        ta = (dir === "rtl") ? "right" : "left";
+                        ta = (context.ipd === "rl") ? "right" : "left";
 
                     } else if (attr === "end") {
 
-                        ta = (dir === "rtl") ? "left" : "right";
+                        ta = (context.ipd === "rl") ? "left" : "right";
 
                     } else {
 
@@ -1473,15 +1558,17 @@
 
                             /* emulate text outline */
 
-                            s.push(
-                                    "rgba(" +
-                                    txto.color[0].toString() + "," +
-                                    txto.color[1].toString() + "," +
-                                    txto.color[2].toString() + "," +
-                                    (txto.color[3] / 255).toString() +
-                                    ")" + " 0px 0px " +
-                                    txto.thickness.toUsedLength(context.w, context.h) + "px"
-                                    );
+                            var to_color = "rgba(" +
+                                                txto.color[0].toString() + "," +
+                                                txto.color[1].toString() + "," +
+                                                txto.color[2].toString() + "," +
+                                                (txto.color[3] / 255).toString() +
+                                                ")";
+
+                            s.push(  "1px 1px 1px " + to_color);
+                            s.push(  "-1px 1px 1px " + to_color);
+                            s.push(  "1px -1px 1px " + to_color);
+                            s.push(  "-1px -1px 1px " + to_color);
 
                         }
 
@@ -1524,52 +1611,8 @@
                 "http://www.w3.org/ns/ttml#styling textEmphasis",
                 function (context, dom_element, isd_element, attr) {
 
-                    /* ignore color (not used in IMSC 1.1) */
+                    /* applied as part of HTML document construction */
 
-                    if (attr.style === "none") {
-
-                        dom_element.style.textEmphasisStyle = "none";
-
-                        /* no need to set position, so return */
-                        
-                        return;
-                    
-                    } else if (attr.style === "auto") {
-
-                        dom_element.style.textEmphasisStyle = "filled";
-                    
-                    } else {
-
-                        dom_element.style.textEmphasisStyle =  attr.style + " " + attr.symbol;
-                    }
-
-                    /* ignore "outside" position (set in postprocessing) */
-
-                    if (attr.position === "before" || attr.position === "after") {
-
-                        var pos;
-
-                        if (context.bpd === "tb") {
-
-                            pos = (attr.position === "before") ? "left over" : "left under";
-
-
-                        } else {
-
-                            if (context.bpd === "rl") {
-
-                                pos = (attr.position === "before") ? "right under" : "left under";
-
-                            } else {
-
-                                pos = (attr.position === "before") ? "left under" : "right under";
-
-                            }
-
-                        }
-
-                        dom_element.style.textEmphasisPosition = pos;
-                    }
                 }
         ),
         new HTMLStylingMapDefintion(
@@ -1622,25 +1665,27 @@
         new HTMLStylingMapDefintion(
                 "http://www.w3.org/ns/ttml#styling writingMode",
                 function (context, dom_element, isd_element, attr) {
+
+                    var wm;
+
                     if (attr === "lrtb" || attr === "lr") {
 
-                        context.writingMode = "horizontal-tb";
+                        dom_element.style.writingMode = "horizontal-tb";
 
                     } else if (attr === "rltb" || attr === "rl") {
 
-                        context.writingMode = "horizontal-tb";
+                        dom_element.style.writingMode = "horizontal-tb";
 
                     } else if (attr === "tblr") {
 
-                        context.writingMode = "vertical-lr";
+                        dom_element.style.writingMode = "vertical-lr";
 
                     } else if (attr === "tbrl" || attr === "tb") {
 
-                        context.writingMode = "vertical-rl";
+                        dom_element.style.writingMode = "vertical-rl";
 
                     }
 
-                    dom_element.style.writingMode = context.writingMode;
                 }
         ),
         new HTMLStylingMapDefintion(
@@ -1667,6 +1712,18 @@
 
         STYLMAP_BY_QNAME[STYLING_MAP_DEFS[i].qname] = STYLING_MAP_DEFS[i];
     }
+
+    /* CSS property names */
+
+    var RUBYPOSITION_ISWK = "webkitRubyPosition" in window.getComputedStyle(document.documentElement);
+
+    var RUBYPOSITION_PROP = RUBYPOSITION_ISWK ? "webkitRubyPosition" : "rubyPosition";
+
+    var TEXTEMPHASISSTYLE_PROP = "webkitTextEmphasisStyle" in window.getComputedStyle(document.documentElement) ? "webkitTextEmphasisStyle" : "textEmphasisStyle";
+
+    var TEXTEMPHASISPOSITION_PROP = "webkitTextEmphasisPosition" in window.getComputedStyle(document.documentElement) ? "webkitTextEmphasisPosition" : "textEmphasisPosition";
+
+    /* error utilities */
 
     function reportError(errorHandler, msg) {
 
