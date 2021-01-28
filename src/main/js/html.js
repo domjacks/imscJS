@@ -28,8 +28,9 @@
  * @module imscHTML
  */
 
-;
-(function (imscHTML, imscNames, imscStyles) {
+var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
+
+(function (imscHTML, imscNames, imscStyles, imscUtils) {
 
     /**
      * Function that maps <pre>smpte:background</pre> URIs to URLs resolving to image resource
@@ -55,6 +56,18 @@
      * is called for the next ISD, otherwise <code>previousISDState</code> should be set to 
      * <code>null</code>.
      * 
+     * The <pre>options</pre> parameter can be used to configure adjustments
+     * that change the presentation away from the document defaults:
+     * <pre>sizeAdjust: {number}</pre> scales the text size and line padding
+     * <pre>lineHeightAdjust: {number}</pre> scales the line height
+     * <pre>backgroundOpacityScale: {number}</pre> scales the backgroundColor opacity
+     * <pre>fontFamily: {string}</pre> comma-separated list of font family values to use, if present.
+     * <pre>colorAdjust: {documentColor: replaceColor*}</pre> map of document colors and the value with which to replace them
+     * <pre>colorOpacityScale: {number}</pre> opacity override on text color (ignored if zero)
+     * <pre>regionOpacityScale: {number}</pre> scales the region opacity
+     * <pre>textOutline: {string}</pre> textOutline value to use, if present
+     * <pre>[span|p|div|body|region]BackgroundColorAdjust: {documentColor: replaceColor*}</pre> map of backgroundColors and the value with which to replace them for each element type
+     * 
      * @param {Object} isd ISD to be rendered
      * @param {Object} element Element into which the ISD is rendered
      * @param {?IMGResolver} imgResolver Resolve <pre>smpte:background</pre> URIs into URLs.
@@ -67,6 +80,7 @@
      * @param {?module:imscUtils.ErrorHandler} errorHandler Error callback
      * @param {Object} previousISDState State saved during processing of the previous ISD, or null if initial call
      * @param {?boolean} enableRollUp Enables roll-up animations (see CEA 708)
+     * @param {?Object} options Configuration options
      * @return {Object} ISD state to be provided when this funtion is called for the next ISD
      */
 
@@ -78,7 +92,8 @@
             displayForcedOnlyMode,
             errorHandler,
             previousISDState,
-            enableRollUp
+            enableRollUp,
+            options
             ) {
 
         /* maintain aspect ratio if specified */
@@ -133,8 +148,23 @@
             bpd: null, /* block progression direction (lr, rl, tb) */
             ruby: null, /* is ruby present in a <p> */
             textEmphasis: null, /* is textEmphasis present in a <p> */
-            rubyReserve: null /* is rubyReserve applicable to a <p> */
+            rubyReserve: null, /* is rubyReserve applicable to a <p> */
+            options: Object.assign({}, options) || {}, /* https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign#deep_clone : */
+            /* this isn't a get-out-of-jail for avoiding mutation of the incoming options if we ever put an object reference into options */
         };
+
+        /* canonicalise and copy colour adjustment maps */
+        if (context.options.colorAdjust)
+            context.options.colorAdjust = preprocessColorMapOptions(context.options.colorAdjust);
+        
+        var bgcColorElements = ['region', 'body', 'div', 'p', 'span'];
+        var propName;
+        for (var bgcei in bgcColorElements)
+        {
+            propName = bgcColorElements[bgcei] + backgroundColorAdjustSuffix;
+            if (context.options[propName])
+            context.options[propName] = preprocessColorMapOptions(context.options[propName]);
+        }
 
         element.appendChild(rootcontainer);
 
@@ -147,6 +177,19 @@
         return context.currentISDState;
 
     };
+
+    function preprocessColorMapOptions(colorAdjustMap) {
+        var canonicalColorMap = {};
+        var colorAdjustMapEntries = Object.entries(colorAdjustMap);
+        for (var i in colorAdjustMapEntries) {
+            var fromColor = imscUtils.parseColor(colorAdjustMapEntries[i][0]);
+            var toColor = imscUtils.parseColor(colorAdjustMapEntries[i][1]);
+            if (fromColor && toColor) {
+                canonicalColorMap[fromColor.toString()] = toColor;
+            }
+        };
+        return canonicalColorMap;
+    }
 
     function processElement(context, dom_parent, isd_element) {
 
@@ -309,7 +352,7 @@
 
         if (lp && (! lp.isZero())) {
 
-            var plength = lp.toUsedLength(context.w, context.h);
+            var plength = lp.multiply(lp.toUsedLength(context.w, context.h), context.options.sizeAdjust);
 
 
             if (plength > 0) {
@@ -498,7 +541,7 @@
 
             if (context.lp) {
 
-                applyLinePadding(linelist, context.lp.toUsedLength(context.w, context.h), context);
+                applyLinePadding(linelist, context.lp.multiply(context.lp.toUsedLength(context.w, context.h), context.options.sizeAdjust), context);
 
                 context.lp = null;
 
@@ -1194,26 +1237,54 @@
                 "http://www.w3.org/ns/ttml#styling backgroundColor",
                 function (context, dom_element, isd_element, attr) {
 
+                    var backgroundColorAdjustMap =
+                        context.options[isd_element.kind + backgroundColorAdjustSuffix];
+                    
+                    var map_attr = backgroundColorAdjustMap && backgroundColorAdjustMap[attr.toString()];
+                    if (map_attr)
+                        attr = map_attr;
+
+                    var opacity = attr[3];
+
                     /* skip if transparent */
-                    if (attr[3] === 0)
+                    if (opacity === 0)
                         return;
+
+                    /* make sure that we allow a multiplier of 0 here*/
+                    if (context.options.backgroundOpacityScale != undefined)
+                        opacity = opacity * context.options.backgroundOpacityScale;
+
+                    opacity = opacity / 255;
 
                     dom_element.style.backgroundColor = "rgba(" +
                             attr[0].toString() + "," +
                             attr[1].toString() + "," +
                             attr[2].toString() + "," +
-                            (attr[3] / 255).toString() +
+                            opacity.toString() +
                             ")";
                 }
         ),
         new HTMLStylingMapDefintion(
                 "http://www.w3.org/ns/ttml#styling color",
                 function (context, dom_element, isd_element, attr) {
+                    /*
+                     * <pre>colorAdjust: {documentColor: replaceColor*}</pre> map of document colors and the value with which to replace them
+                     * <pre>colorOpacityScale: {number}</pre> opacity multiplier on text color (ignored if zero)
+                     */
+                    var opacityMultiplier = context.options.colorOpacityScale || 1;
+
+                    var colorAdjustMap = context.options.colorAdjust;
+                    if (colorAdjustMap != undefined) {
+                        var map_attr = colorAdjustMap[attr.toString()];
+                        if (map_attr)
+                            attr = map_attr;
+                    }
+
                     dom_element.style.color = "rgba(" +
                             attr[0].toString() + "," +
                             attr[1].toString() + "," +
                             attr[2].toString() + "," +
-                            (attr[3] / 255).toString() +
+                            (opacityMultiplier * attr[3] / 255).toString() +
                             ")";
                 }
         ),
@@ -1298,6 +1369,10 @@
 
                     /* per IMSC1 */
 
+                    if (context.options.fontFamily) {
+                        attr = context.options.fontFamily.split(",");
+                    }
+
                     for (var i in attr) {
                         attr[i] = attr[i].trim();
 
@@ -1377,7 +1452,7 @@
         new HTMLStylingMapDefintion(
                 "http://www.w3.org/ns/ttml#styling fontSize",
                 function (context, dom_element, isd_element, attr) {
-                    dom_element.style.fontSize = attr.toUsedLength(context.w, context.h) + "px";
+                    dom_element.style.fontSize = attr.multiply(attr.toUsedLength(context.w, context.h), context.options.sizeAdjust) + "px";
                 }
         ),
 
@@ -1402,14 +1477,28 @@
 
                     } else {
 
-                        dom_element.style.lineHeight = attr.toUsedLength(context.w, context.h) + "px";
+                        dom_element.style.lineHeight = 
+                            attr.multiply(
+                                attr.multiply(
+                                    attr.toUsedLength(context.w, context.h), context.options.sizeAdjust),
+                                context.options.lineHeightAdjust) + "px";
                     }
                 }
         ),
         new HTMLStylingMapDefintion(
                 "http://www.w3.org/ns/ttml#styling opacity",
                 function (context, dom_element, isd_element, attr) {
-                    dom_element.style.opacity = attr;
+                    /*
+                     * Customisable using <pre>regionOpacityScale: {number}</pre>
+                     * which acts as a multiplier.
+                     */
+                    var opacity = attr;
+
+                    if (context.options.regionOpacityScale != undefined) {
+                        opacity = opacity * context.options.regionOpacityScale;
+                    }
+
+                    dom_element.style.opacity = opacity;
                 }
         ),
         new HTMLStylingMapDefintion(
@@ -1545,6 +1634,38 @@
                 function (context, dom_element, isd_element, attr) {
 
                     var txto = isd_element.styleAttrs[imscStyles.byName.textOutline.qname];
+                    var otxto = context.options.textOutline;
+                    if (otxto) {
+                        if (otxto === "none") {
+
+                            txto = otxto;
+
+                        } else {
+                            var r = {};
+                            var os = otxto.split(" ");
+                            if (os.length !== 0 && os.length <= 2)
+                            {
+                                var c = imscUtils.parseColor(os[0]);
+
+                                r.color = c;
+
+                                if (c !== null)
+                                    os.shift();
+
+                                if (os.length === 1)
+                                {
+                                    var l = imscUtils.parseLength(os[0]);
+
+                                    if (l)
+                                    {
+                                        r.thickness = l;
+
+                                        txto = r;
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     if (attr === "none" && txto === "none") {
 
