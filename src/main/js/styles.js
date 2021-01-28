@@ -185,7 +185,10 @@
             imscNames.ns_tts,
             "fontFamily",
             "default",
-            ['span'],
+            [
+                'p',
+                'span',
+            ],
             true,
             true,
             function (str) {
@@ -249,7 +252,10 @@
             imscNames.ns_tts,
             "fontSize",
             "1c",
-            ['span'],
+            [
+                'p',
+                'span',
+            ],
             true,
             true,
             imscUtils.parseLength,
