@@ -2102,10 +2102,10 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
     function preprocessColorMapOptions(colorAdjustMap) {
         var canonicalColorMap = {};
-        colorAdjustMapEntries = Object.entries(colorAdjustMap);
+        var colorAdjustMapEntries = Object.entries(colorAdjustMap);
         for (var i in colorAdjustMapEntries) {
-            fromColor = imscUtils.parseColor(colorAdjustMapEntries[i][0]);
-            toColor = imscUtils.parseColor(colorAdjustMapEntries[i][1]);
+            var fromColor = imscUtils.parseColor(colorAdjustMapEntries[i][0]);
+            var toColor = imscUtils.parseColor(colorAdjustMapEntries[i][1]);
             if (fromColor && toColor) {
                 canonicalColorMap[fromColor.toString()] = toColor;
             }
@@ -3197,7 +3197,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                     var colorAdjustMap = context.options.colorAdjust;
                     if (colorAdjustMap != undefined) {
-                        map_attr = colorAdjustMap[attr.toString()];
+                        var map_attr = colorAdjustMap[attr.toString()];
                         if (map_attr)
                             attr = map_attr;
                     }
@@ -3842,13 +3842,51 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
         };
 
-        /* process regions */
+        /* Filter body contents - Only process what we need within the offset and discard regions not applicable to the content */
+        var body = {};
+        var activeRegions = new Set();
 
-        for (var r in tt.head.layout.regions) {
+        function filter(offset, element) {
+            function offsetFilter(element) {
+                return !(offset < element.begin || offset >= element.end);    
+            }    
+        
+            if (element.contents) {
+                var clone = {};
+                for (var prop in element) {
+                    clone[prop] = element[prop];
+                }
+                clone.contents = [];
 
+                element.contents.filter(offsetFilter).forEach(function (el) {
+                    var filteredElement = filter(offset, el);
+                    if (filteredElement.regionID) {
+                        activeRegions.add(filteredElement.regionID);
+                    }
+        
+                    if (filteredElement !== null) {
+                        clone.contents.push(filteredElement);
+                    }
+                });
+                return clone;
+            } else {
+                return element;
+            }
+        }
+
+        body = filter(offset, tt.body);
+
+        /* rewritten TTML will always have a default - this covers it. because the region is defaulted to "" */
+        if (activeRegions.size === 0 && tt.head.layout.regions.hasOwnProperty("")) {
+            activeRegions.add("");
+        }
+        
+        /* process regions */      
+
+        activeRegions.forEach(function (regionID) {
             /* post-order traversal of the body tree per [construct intermediate document] */
 
-            var c = isdProcessContentElement(tt, offset, tt.head.layout.regions[r], tt.body, null, '', tt.head.layout.regions[r], errorHandler, context);
+            var c = isdProcessContentElement(tt, offset, tt.head.layout.regions[regionID], body, null, '', tt.head.layout.regions[regionID], errorHandler, context);
 
             if (c !== null) {
 
@@ -3856,9 +3894,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                 isd.contents.push(c.element);
             }
-
-
-        }
+        });
 
         return isd;
     };
