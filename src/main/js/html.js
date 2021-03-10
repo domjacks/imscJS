@@ -192,7 +192,6 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
     }
 
     function processElement(context, dom_parent, isd_element) {
-
         var e;
 
         if (isd_element.kind === 'region') {
@@ -372,7 +371,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                     proc_e.style.paddingBottom = padmeasure;
 
                 }
-
+                context.removePaddingElement=proc_e;
                 context.lp = lp;
             }
         }
@@ -449,7 +448,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                     var cc = isd_element.text.charCodeAt(j);
 
-                    if (cc < 0xD800 || cc > 0xDBFF || j === isd_element.text.length) {
+                    if (cc < 0xD800 || cc > 0xDBFF || j === isd_element.text.length-1) {
 
                         /* wrap the character(s) in a span unless it is a high surrogate */
 
@@ -543,6 +542,11 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                 applyLinePadding(linelist, context.lp.multiply(context.lp.toUsedLength(context.w, context.h), context.options.sizeAdjust), context);
 
+
+                context.removePaddingElement.style.paddingLeft=0;
+                context.removePaddingElement.style.paddingRight=0;
+                context.removePaddingElement.style.paddingTop=0;
+                context.removePaddingElement.style.paddingBottom=0;
                 context.lp = null;
 
             }
@@ -566,16 +570,14 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
         if (isd_element.kind === "region") {
 
-            /* build line list */
-
-            constructLineList(context, proc_e, linelist);
-
             /* perform roll up if needed */
-
             if ((context.bpd === "tb") &&
                     context.enableRollUp &&
                     isd_element.contents.length > 0 &&
                     isd_element.styleAttrs[imscStyles.byName.displayAlign.qname] === 'after') {
+
+                /* build line list */
+                constructLineList(context, proc_e, linelist, null);
 
                 /* horrible hack, perhaps default region id should be underscore everywhere? */
 
@@ -1037,15 +1039,14 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                 /* skip if span is not displayed */
 
-                if (r.height === 0 || r.width === 0)
+                if (r.height === 0 || r.width === 0) {
                     return;
-
+                }
                 var edges = rect2edges(r, context);
 
                 if (llist.length === 0 ||
                         (!isSameLine(edges.before, edges.after, llist[llist.length - 1].before, llist[llist.length - 1].after))
                         ) {
-
                     llist.push({
                         before: edges.before,
                         after: edges.after,
@@ -1061,7 +1062,6 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                     });
 
                 } else {
-
                     /* positive for BPD = lr and tb, negative for BPD = rl */
                     var bpd_dir = Math.sign(edges.after - edges.before);
 
@@ -1151,7 +1151,6 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
     }
 
     function isSameLine(before1, after1, before2, after2) {
-
         return ((after1 < after2) && (before1 > before2)) || ((after2 <= after1) && (before2 >= before1));
 
     }
