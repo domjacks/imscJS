@@ -553,7 +553,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                 var par_edges = rect2edges(proc_e.getBoundingClientRect(), context);
 
-                applyFillLineGap(linelist, par_edges.before, par_edges.after, context);
+                applyFillLineGap(linelist, par_edges.before, par_edges.after, context,proc_e);
 
                 context.flg = null;
 
@@ -627,14 +627,9 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
             if (l !== 0) {
 
                 if (context.ipd === "lr") {
-
-                    se.node.style.borderLeftColor = se.bgcolor || "#00000000";
-                    se.node.style.borderLeftStyle = "solid";
-                    se.node.style.borderLeftWidth = pospadpxlen;
-                    se.node.style.marginLeft = negpadpxlen;
-
+                    se.node.style.paddingLeft = pospadpxlen;
                 } else if (context.ipd === "rl") {
-
+// Work out what this should be similar to lr
                     se.node.style.borderRightColor = se.bgcolor || "#00000000";
                     se.node.style.borderRightStyle = "solid";
                     se.node.style.borderRightWidth = pospadpxlen;
@@ -650,14 +645,9 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                 }
 
                 if (context.ipd === "lr") {
-
-                    ee.node.style.borderRightColor = ee.bgcolor  || "#00000000";
-                    ee.node.style.borderRightStyle = "solid";
-                    ee.node.style.borderRightWidth = pospadpxlen;
-                    ee.node.style.marginRight = negpadpxlen;
-
+                    ee.node.style.paddingRight = pospadpxlen;
                 } else if (context.ipd === "rl") {
-
+// Work out what this should be similar to lr
                     ee.node.style.borderLeftColor = ee.bgcolor || "#00000000";
                     ee.node.style.borderLeftStyle = "solid";
                     ee.node.style.borderLeftWidth = pospadpxlen;
@@ -875,7 +865,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
     }
 
-    function applyFillLineGap(lineList, par_before, par_after, context) {
+    function applyFillLineGap(lineList, par_before, par_after, context, element) {
 
         /* positive for BPD = lr and tb, negative for BPD = rl */
         var s = Math.sign(par_after - par_before);
@@ -911,7 +901,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
             /* before line */
 
             if (i > 0) {
-
+                var maxPad = 0;
                 for (var j = 0; j < lineList[i - 1].elements.length; j++) {
 
                     if (lineList[i - 1].elements[j].bgcolor === null)
@@ -921,35 +911,30 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                     if (s * (e.after - frontier) < 0) {
 
-                        pad = Math.ceil(Math.abs(frontier - e.after)) + "px";
+                        pad = Math.abs(frontier - e.after);
 
-                        e.node.style.backgroundColor = e.bgcolor;
-
-                        if (context.bpd === "lr") {
-
-                            e.node.style.paddingRight = pad;
-
-
-                        } else if (context.bpd === "rl") {
-
-                            e.node.style.paddingLeft = pad;
-
-                        } else if (context.bpd === "tb") {
-
-                            e.node.style.paddingBottom = pad;
-
+                        if (pad>maxPad) {
+                            maxPad=pad;
                         }
-
                     }
-
                 }
+                var n=element.getElementsByTagName("span");
+                var thisNode=n[i];
+//                        e.node.style.backgroundColor = e.bgcolor;
 
+                if (context.bpd === "lr") {
+                    thisNode.style.paddingRight = maxPad+"px";
+                } else if (context.bpd === "rl") {
+                    thisNode.style.paddingLeft = maxPad+"px";
+                } else if (context.bpd === "tb") {
+                    thisNode.style.paddingBottom = maxPad+"px";
+                }
             }
 
             /* after line */
 
             if (i < lineList.length) {
-
+                var maxPad = 0;
                 for (var k = 0; k < lineList[i].elements.length; k++) {
 
                     e = lineList[i].elements[k];
@@ -959,28 +944,23 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                     if (s * (e.before - frontier) > 0) {
 
-                        pad = Math.ceil(Math.abs(e.before - frontier)) + "px";
+                        pad = Math.abs(e.before - frontier);
 
-                        e.node.style.backgroundColor = e.bgcolor;
-
-                        if (context.bpd === "lr") {
-
-                            e.node.style.paddingLeft = pad;
-
-
-                        } else if (context.bpd === "rl") {
-
-                            e.node.style.paddingRight = pad;
-
-
-                        } else if (context.bpd === "tb") {
-
-                            e.node.style.paddingTop = pad;
-
+                        if (pad>maxPad) {
+                            maxPad = pad;
                         }
-
+//                        e.node.style.backgroundColor = e.bgcolor;
                     }
+                }
 
+                var n=element.getElementsByTagName("span");
+                var thisNode=n[i];
+                if (context.bpd === "lr") {
+                    thisNode.style.paddingLeft = maxPad+"px";
+                } else if (context.bpd === "rl") {
+                    thisNode.style.paddingRight = maxPad+"px";
+                } else if (context.bpd === "tb") {
+                    thisNode.style.paddingTop = maxPad+"px";
                 }
 
             }
