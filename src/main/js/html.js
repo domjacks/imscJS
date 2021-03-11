@@ -902,9 +902,11 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
             }
 
+            var border;
+            var l,thisNode;
             /* padding amount */
 
-            var pad;
+            var pad,maxPad;
 
             /* current element */
 
@@ -913,7 +915,6 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
             /* before line */
 
             if (i > 0) {
-                var maxPad = 0;
                 for (var j = 0; j < lineList[i - 1].elements.length; j++) {
 
                     if (lineList[i - 1].elements[j].bgcolor === null)
@@ -930,8 +931,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                         }
                     }
                 }
-                var n=element.getElementsByTagName("span");
-                var thisNode=n[i];
+                thisNode=element.getElementsByTagName("span")[i];
                 if (!lineList[i] || thisNode.childElementCount==lineList[i].elements.length) {
 // this works for m000sm34
                     if (context.bpd === "lr") {
@@ -943,9 +943,9 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                     }
                 } else {
 // this works for p08m5t9c with regions
-                    for (var l=0;l<lineList[i-1].elements.length;l++) {
+                    for (l=0;l<lineList[i-1].elements.length;l++) {
                         thisNode=lineList[i-1].elements[l];
-                        var border=maxPad+"px solid "+thisNode.bgcolor;
+                        border=maxPad+"px solid "+thisNode.bgcolor;
                         if (context.bpd === "lr") {
                             thisNode.node.style.borderRight = border;
                         } else if (context.bpd === "rl") {
@@ -959,7 +959,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
             /* after line */
 
             if (i < lineList.length) {
-                var maxPad = 0;
+                maxPad = 0;
                 for (var k = 0; k < lineList[i].elements.length; k++) {
 
                     e = lineList[i].elements[k];
@@ -978,8 +978,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                     }
                 }
 
-                var n=element.getElementsByTagName("span");
-                thisNode=n[i];
+                thisNode=element.getElementsByTagName("span")[i];
                 if (thisNode.childElementCount==lineList[i].elements.length) {
 // this works for m000sm34
                     if (context.bpd === "lr") {
@@ -994,7 +993,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                     for (l=0;l<lineList[i].elements.length;l++) {
                         thisNode=lineList[i].elements[l];
-                        var border=maxPad+"px solid "+thisNode.bgcolor;
+                        border=maxPad+"px solid "+thisNode.bgcolor;
                         if (context.bpd === "lr") {
                             thisNode.node.style.borderLeft = border;
                         } else if (context.bpd === "rl") {
