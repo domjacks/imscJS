@@ -967,7 +967,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 //                        e.node.style.backgroundColor = e.bgcolor;
                     }
                 }
-                console.log(element)
+
                 var n=element.getElementsByTagName("span");
                 thisNode=n[i];
                 if (thisNode.childElementCount==lineList[i].elements.length) {
