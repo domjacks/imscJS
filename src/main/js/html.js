@@ -876,7 +876,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
         /* positive for BPD = lr and tb, negative for BPD = rl */
         var s = Math.sign(par_after - par_before);
 
-        for (var i = 0; i < lineList.length; i++) {
+        for (var i = 0; i <= lineList.length; i++) {
 
             /* compute frontier between lines */
 
@@ -891,8 +891,14 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                 frontier = par_after;
 
             } else {
-
-                frontier = (lineList[i].before + lineList[i - 1].after) / 2;
+                // apply to the between adjustment just to the longest one
+                var thisWidth = Math.abs(lineList[i].end - lineList[i].start);
+                var previousWidth = Math.abs(lineList[i-1].end - lineList[i-1].start);
+                if (thisWidth>previousWidth) {
+                    frontier = lineList[i].before;
+                } else {
+                    frontier = lineList[i - 1].after;
+                }
 
             }
 
