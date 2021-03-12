@@ -159,19 +159,21 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
         
         var bgcColorElements = ['region', 'body', 'div', 'p', 'span'];
         var propName;
-        for (var bgcei in bgcColorElements)
-        {
-            propName = bgcColorElements[bgcei] + backgroundColorAdjustSuffix;
-            if (context.options[propName])
-            context.options[propName] = preprocessColorMapOptions(context.options[propName]);
+        for (var bgcei in bgcColorElements) {
+            if (bgcColorElements.hasOwnProperty(bgcei)) {
+                propName = bgcColorElements[bgcei] + backgroundColorAdjustSuffix;
+                if (context.options[propName]) {
+                    context.options[propName] = preprocessColorMapOptions(context.options[propName]);
+                }
+            }
         }
 
         element.appendChild(rootcontainer);
 
         for (var i in isd.contents) {
-
-            processElement(context, rootcontainer, isd.contents[i]);
-
+            if (isd.contents.hasOwnProperty(i)) {
+                processElement(context, rootcontainer, isd.contents[i]);
+            }
         }
 
         return context.currentISDState;
@@ -182,10 +184,12 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
         var canonicalColorMap = {};
         var colorAdjustMapEntries = Object.entries(colorAdjustMap);
         for (var i in colorAdjustMapEntries) {
-            var fromColor = imscUtils.parseColor(colorAdjustMapEntries[i][0]);
-            var toColor = imscUtils.parseColor(colorAdjustMapEntries[i][1]);
-            if (fromColor && toColor) {
-                canonicalColorMap[fromColor.toString()] = toColor;
+            if (colorAdjustMapEntries.hasOwnProperty(i)) {
+                var fromColor = imscUtils.parseColor(colorAdjustMapEntries[i][0]);
+                var toColor = imscUtils.parseColor(colorAdjustMapEntries[i][1]);
+                if (fromColor && toColor) {
+                    canonicalColorMap[fromColor.toString()] = toColor;
+                }
             }
         };
         return canonicalColorMap;
@@ -330,15 +334,16 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
         /* tranform TTML styles to CSS styles */
 
         for (var i in STYLING_MAP_DEFS) {
+            if (STYLING_MAP_DEFS.hasOwnProperty(i)) {
+                var sm = STYLING_MAP_DEFS[i];
 
-            var sm = STYLING_MAP_DEFS[i];
+                var attr = isd_element.styleAttrs[sm.qname];
 
-            var attr = isd_element.styleAttrs[sm.qname];
+                if (attr !== undefined && sm.map !== null) {
 
-            if (attr !== undefined && sm.map !== null) {
+                    sm.map(context, e, isd_element, attr);
 
-                sm.map(context, e, isd_element, attr);
-
+                }
             }
 
         }
@@ -478,9 +483,9 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
         /* process the children of the ISD element */
 
         for (var k in isd_element.contents) {
-
-            processElement(context, proc_e, isd_element.contents[k]);
-
+            if (isd_element.contents.hasOwnProperty(k)) {
+                processElement(context, proc_e, isd_element.contents[k]);
+            }
         }
 
         /* list of lines */
@@ -618,8 +623,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
     function applyLinePadding(lineList, lp, context) {
 
-        for (var i in lineList) {
-
+        for (var i=0;i<lineList.length;i++) {
             var l = lineList[i].elements.length;
 
             var se = lineList[i].elements[lineList[i].start_elem];
@@ -1392,51 +1396,52 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                     }
 
                     for (var i in attr) {
-                        attr[i] = attr[i].trim();
+                        if (attr[i].hasOwnProperty(i)) {
+                            attr[i] = attr[i].trim();
 
-                        if (attr[i] === "monospaceSerif") {
+                            if (attr[i] === "monospaceSerif") {
 
-                            rslt.push("Courier New");
-                            rslt.push('"Liberation Mono"');
-                            rslt.push("Courier");
-                            rslt.push("monospace");
+                                rslt.push("Courier New");
+                                rslt.push('"Liberation Mono"');
+                                rslt.push("Courier");
+                                rslt.push("monospace");
 
-                        } else if (attr[i] === "proportionalSansSerif" || attr[i] === "default") {
+                            } else if (attr[i] === "proportionalSansSerif" || attr[i] === "default") {
 
-                            rslt.push("Arial");
-                            rslt.push("Helvetica");
-                            rslt.push('"Liberation Sans"');
-                            rslt.push("sans-serif");
+                                rslt.push("Arial");
+                                rslt.push("Helvetica");
+                                rslt.push('"Liberation Sans"');
+                                rslt.push("sans-serif");
 
-                        } else if (attr[i] === "monospace") {
+                            } else if (attr[i] === "monospace") {
+                               
+                                rslt.push("monospace");
 
-                            rslt.push("monospace");
+                            } else if (attr[i] === "sansSerif") {
 
-                        } else if (attr[i] === "sansSerif") {
+                                rslt.push("sans-serif");
 
-                            rslt.push("sans-serif");
+                            } else if (attr[i] === "serif") {
 
-                        } else if (attr[i] === "serif") {
+                                rslt.push("serif");
 
-                            rslt.push("serif");
+                            } else if (attr[i] === "monospaceSansSerif") {
 
-                        } else if (attr[i] === "monospaceSansSerif") {
+                                rslt.push("Consolas");
+                                rslt.push("monospace");
 
-                            rslt.push("Consolas");
-                            rslt.push("monospace");
+                            } else if (attr[i] === "proportionalSerif") {
 
-                        } else if (attr[i] === "proportionalSerif") {
+                                rslt.push("serif");
 
-                            rslt.push("serif");
+                            } else {
 
-                        } else {
+                                rslt.push(attr[i]);
 
-                            rslt.push(attr[i]);
+                            }
 
                         }
-
                     }
-
                     dom_element.style.fontFamily = rslt.join(",");
                 }
         ),
@@ -1716,9 +1721,9 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                         if (attr !== "none") {
 
                             for (var i in attr) {
+                                if (attr.hasOwnProperty(i)) {
 
-
-                                s.push(attr[i].x_off.toUsedLength(context.w, context.h) + "px " +
+                                    s.push(attr[i].x_off.toUsedLength(context.w, context.h) + "px " +
                                         attr[i].y_off.toUsedLength(context.w, context.h) + "px " +
                                         attr[i].b_radius.toUsedLength(context.w, context.h) + "px " +
                                         "rgba(" +
@@ -1728,7 +1733,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                                         (attr[i].color[3] / 255).toString() +
                                         ")"
                                         );
-
+                                }
                             }
 
                         }
@@ -1848,8 +1853,9 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
     var STYLMAP_BY_QNAME = {};
 
     for (var i in STYLING_MAP_DEFS) {
-
-        STYLMAP_BY_QNAME[STYLING_MAP_DEFS[i].qname] = STYLING_MAP_DEFS[i];
+        if (STYLING_MAP_DEFS.hasOwnProperty(i)) {
+            STYLMAP_BY_QNAME[STYLING_MAP_DEFS[i].qname] = STYLING_MAP_DEFS[i];
+        }
     }
 
     /* CSS property names */
