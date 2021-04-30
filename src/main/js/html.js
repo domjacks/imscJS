@@ -473,6 +473,8 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                         cbuf = '';
 
+                        //For the sake of merging these back together, record what isd element generated it.
+                        span._isd_element = isd_element;
                     }
 
                 }
@@ -572,6 +574,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
             }
 
+            mergeSpans(proc_e);
         }
 
 
@@ -617,7 +620,41 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
             }
 
             /* TODO: clean-up the spans ? */
+        }
+    }
 
+    function mergeSpans(node) {
+        for (var c = 0; c < node.children.length; c++) {
+            var child = node.children[c];
+
+            mergeSpans(child);
+        }
+
+        for (var i = 1; i < node.children.length;) {
+            var previous = node.children[i-1];
+            var span = node.children[i];
+
+            if (previous.children.length === 0 && span.children.length === 0 && spanMerge(previous, span)) {
+                //deleted by spanMerge()
+                continue;
+            } else {
+                i++;
+            }
+        }
+    }
+
+    function spanMerge(first, second) {
+        if (first.tagName === "SPAN" && second.tagName === "SPAN" && first._isd_element === second._isd_element) {
+            first.textContent += second.textContent;
+
+            for (var s of second.style) {
+                if (s.indexOf("border") >= 0 || s.indexOf("padding") >= 0) {
+                    first.style[s] = second.style[s];
+                }
+            }
+
+            second.parentElement.removeChild(second);
+            return true;
         }
     }
 
