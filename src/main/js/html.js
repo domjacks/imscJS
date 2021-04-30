@@ -159,19 +159,21 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
         
         var bgcColorElements = ['region', 'body', 'div', 'p', 'span'];
         var propName;
-        for (var bgcei in bgcColorElements)
-        {
-            propName = bgcColorElements[bgcei] + backgroundColorAdjustSuffix;
-            if (context.options[propName])
-            context.options[propName] = preprocessColorMapOptions(context.options[propName]);
+        for (var bgcei in bgcColorElements) {
+            if (bgcColorElements.hasOwnProperty(bgcei)) {
+                propName = bgcColorElements[bgcei] + backgroundColorAdjustSuffix;
+                if (context.options[propName]) {
+                    context.options[propName] = preprocessColorMapOptions(context.options[propName]);
+                }
+            }
         }
 
         element.appendChild(rootcontainer);
 
         for (var i in isd.contents) {
-
-            processElement(context, rootcontainer, isd.contents[i]);
-
+            if (isd.contents.hasOwnProperty(i)) {
+                processElement(context, rootcontainer, isd.contents[i]);
+            }
         }
 
         return context.currentISDState;
@@ -182,17 +184,18 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
         var canonicalColorMap = {};
         var colorAdjustMapEntries = Object.entries(colorAdjustMap);
         for (var i in colorAdjustMapEntries) {
-            var fromColor = imscUtils.parseColor(colorAdjustMapEntries[i][0]);
-            var toColor = imscUtils.parseColor(colorAdjustMapEntries[i][1]);
-            if (fromColor && toColor) {
-                canonicalColorMap[fromColor.toString()] = toColor;
+            if (colorAdjustMapEntries.hasOwnProperty(i)) {
+                var fromColor = imscUtils.parseColor(colorAdjustMapEntries[i][0]);
+                var toColor = imscUtils.parseColor(colorAdjustMapEntries[i][1]);
+                if (fromColor && toColor) {
+                    canonicalColorMap[fromColor.toString()] = toColor;
+                }
             }
         };
         return canonicalColorMap;
     }
 
     function processElement(context, dom_parent, isd_element) {
-
         var e;
 
         if (isd_element.kind === 'region') {
@@ -331,15 +334,16 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
         /* tranform TTML styles to CSS styles */
 
         for (var i in STYLING_MAP_DEFS) {
+            if (STYLING_MAP_DEFS.hasOwnProperty(i)) {
+                var sm = STYLING_MAP_DEFS[i];
 
-            var sm = STYLING_MAP_DEFS[i];
+                var attr = isd_element.styleAttrs[sm.qname];
 
-            var attr = isd_element.styleAttrs[sm.qname];
+                if (attr !== undefined && sm.map !== null) {
 
-            if (attr !== undefined && sm.map !== null) {
+                    sm.map(context, e, isd_element, attr);
 
-                sm.map(context, e, isd_element, attr);
-
+                }
             }
 
         }
@@ -372,7 +376,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                     proc_e.style.paddingBottom = padmeasure;
 
                 }
-
+                context.removePaddingElement=proc_e;
                 context.lp = lp;
             }
         }
@@ -449,7 +453,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                     var cc = isd_element.text.charCodeAt(j);
 
-                    if (cc < 0xD800 || cc > 0xDBFF || j === isd_element.text.length) {
+                    if (cc < 0xD800 || cc > 0xDBFF || j === isd_element.text.length-1) {
 
                         /* wrap the character(s) in a span unless it is a high surrogate */
 
@@ -479,9 +483,9 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
         /* process the children of the ISD element */
 
         for (var k in isd_element.contents) {
-
-            processElement(context, proc_e, isd_element.contents[k]);
-
+            if (isd_element.contents.hasOwnProperty(k)) {
+                processElement(context, proc_e, isd_element.contents[k]);
+            }
         }
 
         /* list of lines */
@@ -543,6 +547,15 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                 applyLinePadding(linelist, context.lp.multiply(context.lp.toUsedLength(context.w, context.h), context.options.sizeAdjust), context);
 
+                if (context.bpd === "tb") {
+                    // should this actually be remove?
+                    context.removePaddingElement.style.paddingLeft=0;
+                    context.removePaddingElement.style.paddingRight=0;
+                } else {
+                    context.removePaddingElement.style.paddingTop=0;
+                    context.removePaddingElement.style.paddingBottom=0;
+                }
+
                 context.lp = null;
 
             }
@@ -553,7 +566,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                 var par_edges = rect2edges(proc_e.getBoundingClientRect(), context);
 
-                applyFillLineGap(linelist, par_edges.before, par_edges.after, context);
+                applyFillLineGap(linelist, par_edges.before, par_edges.after, context,proc_e);
 
                 context.flg = null;
 
@@ -566,16 +579,14 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
         if (isd_element.kind === "region") {
 
-            /* build line list */
-
-            constructLineList(context, proc_e, linelist);
-
             /* perform roll up if needed */
-
             if ((context.bpd === "tb") &&
                     context.enableRollUp &&
                     isd_element.contents.length > 0 &&
                     isd_element.styleAttrs[imscStyles.byName.displayAlign.qname] === 'after') {
+
+                /* build line list */
+                constructLineList(context, proc_e, linelist, null);
 
                 /* horrible hack, perhaps default region id should be underscore everywhere? */
 
@@ -612,8 +623,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
     function applyLinePadding(lineList, lp, context) {
 
-        for (var i in lineList) {
-
+        for (var i=0;i<lineList.length;i++) {
             var l = lineList[i].elements.length;
 
             var se = lineList[i].elements[lineList[i].start_elem];
@@ -627,14 +637,9 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
             if (l !== 0) {
 
                 if (context.ipd === "lr") {
-
-                    se.node.style.borderLeftColor = se.bgcolor || "#00000000";
-                    se.node.style.borderLeftStyle = "solid";
-                    se.node.style.borderLeftWidth = pospadpxlen;
-                    se.node.style.marginLeft = negpadpxlen;
-
+                    se.node.style.paddingLeft = pospadpxlen;
                 } else if (context.ipd === "rl") {
-
+// Work out what this should be similar to lr
                     se.node.style.borderRightColor = se.bgcolor || "#00000000";
                     se.node.style.borderRightStyle = "solid";
                     se.node.style.borderRightWidth = pospadpxlen;
@@ -650,14 +655,9 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                 }
 
                 if (context.ipd === "lr") {
-
-                    ee.node.style.borderRightColor = ee.bgcolor  || "#00000000";
-                    ee.node.style.borderRightStyle = "solid";
-                    ee.node.style.borderRightWidth = pospadpxlen;
-                    ee.node.style.marginRight = negpadpxlen;
-
+                    ee.node.style.paddingRight = pospadpxlen;
                 } else if (context.ipd === "rl") {
-
+// Work out what this should be similar to lr
                     ee.node.style.borderLeftColor = ee.bgcolor || "#00000000";
                     ee.node.style.borderLeftStyle = "solid";
                     ee.node.style.borderLeftWidth = pospadpxlen;
@@ -875,14 +875,15 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
     }
 
-    function applyFillLineGap(lineList, par_before, par_after, context) {
-
+    function applyFillLineGap(lineList, par_before, par_after, context, element) {
         /* positive for BPD = lr and tb, negative for BPD = rl */
         var s = Math.sign(par_after - par_before);
 
         for (var i = 0; i <= lineList.length; i++) {
 
             /* compute frontier between lines */
+
+            var maxPad = 0;
 
             var frontier;
 
@@ -895,13 +896,19 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                 frontier = par_after;
 
             } else {
-
-                frontier = (lineList[i].before + lineList[i - 1].after) / 2;
+                // apply to the between adjustment just to the longest one
+                var thisWidth = Math.abs(lineList[i].end - lineList[i].start);
+                var previousWidth = Math.abs(lineList[i-1].end - lineList[i-1].start);
+                if (thisWidth>previousWidth) {
+                    frontier = lineList[i].before;
+                } else {
+                    frontier = lineList[i - 1].after + maxPad;
+                }
 
             }
 
-            /* padding amount */
-
+            var border;
+            var l,thisNode;
             var pad;
 
             /* current element */
@@ -911,7 +918,6 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
             /* before line */
 
             if (i > 0) {
-
                 for (var j = 0; j < lineList[i - 1].elements.length; j++) {
 
                     if (lineList[i - 1].elements[j].bgcolor === null)
@@ -921,35 +927,44 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                     if (s * (e.after - frontier) < 0) {
 
-                        pad = Math.ceil(Math.abs(frontier - e.after)) + "px";
+                        pad = Math.abs(frontier - e.after);
 
-                        e.node.style.backgroundColor = e.bgcolor;
-
-                        if (context.bpd === "lr") {
-
-                            e.node.style.paddingRight = pad;
-
-
-                        } else if (context.bpd === "rl") {
-
-                            e.node.style.paddingLeft = pad;
-
-                        } else if (context.bpd === "tb") {
-
-                            e.node.style.paddingBottom = pad;
-
+                        if (pad>maxPad) {
+                            maxPad=pad;
                         }
-
                     }
-
                 }
-
+                thisNode=element.getElementsByTagName("span")[i];
+                if (!lineList[i] || thisNode.childElementCount==lineList[i].elements.length) {
+// this works for m000sm34
+                    if (thisNode.style.borderBottom=="") {
+                        if (context.bpd === "lr") {
+                            thisNode.style.paddingRight = maxPad+"px";
+                        } else if (context.bpd === "rl") {
+                            thisNode.style.paddingLeft = maxPad+"px";
+                        } else if (context.bpd === "tb") {
+                            thisNode.style.paddingBottom = maxPad+"px";
+                        }
+                    }
+                } else {
+// this works for p08m5t9c with regions
+                    for (l=0;l<lineList[i-1].elements.length;l++) {
+                        thisNode=lineList[i-1].elements[l];
+                        border=maxPad+"px solid "+thisNode.bgcolor;
+                        if (context.bpd === "lr") {
+                            thisNode.node.style.borderRight = border;
+                        } else if (context.bpd === "rl") {
+                            thisNode.node.style.borderLeft = border;
+                        } else if (context.bpd === "tb") {
+                            thisNode.node.style.borderBottom = border;
+                        }
+                    }
+                }
             }
-
             /* after line */
 
             if (i < lineList.length) {
-
+                maxPad = 0;
                 for (var k = 0; k < lineList[i].elements.length; k++) {
 
                     e = lineList[i].elements[k];
@@ -959,28 +974,39 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                     if (s * (e.before - frontier) > 0) {
 
-                        pad = Math.ceil(Math.abs(e.before - frontier)) + "px";
+                        pad = Math.abs(e.before - frontier);
 
-                        e.node.style.backgroundColor = e.bgcolor;
-
-                        if (context.bpd === "lr") {
-
-                            e.node.style.paddingLeft = pad;
-
-
-                        } else if (context.bpd === "rl") {
-
-                            e.node.style.paddingRight = pad;
-
-
-                        } else if (context.bpd === "tb") {
-
-                            e.node.style.paddingTop = pad;
-
+                        if (pad>maxPad) {
+                            maxPad = pad;
                         }
-
+//                        e.node.style.backgroundColor = e.bgcolor;
                     }
+                }
 
+                thisNode=element.getElementsByTagName("span")[i];
+                if (thisNode.childElementCount==lineList[i].elements.length) {
+// this works for m000sm34
+                    if (context.bpd === "lr") {
+                        thisNode.style.paddingLeft = maxPad+"px";
+                    } else if (context.bpd === "rl") {
+                        thisNode.style.paddingRight = maxPad+"px";
+                    } else if (context.bpd === "tb") {
+                        thisNode.style.paddingTop = maxPad+"px";
+                    }
+                } else {
+// this works for p08m5t9c with regions
+
+                    for (l=0;l<lineList[i].elements.length;l++) {
+                        thisNode=lineList[i].elements[l];
+                        border=maxPad+"px solid "+thisNode.bgcolor;
+                        if (context.bpd === "lr") {
+                            thisNode.node.style.borderLeft = border;
+                        } else if (context.bpd === "rl") {
+                            thisNode.node.style.borderRight = border;
+                        } else if (context.bpd === "tb") {
+                            thisNode.node.style.borderTop = border;
+                        }
+                    }
                 }
 
             }
@@ -1057,15 +1083,14 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                 /* skip if span is not displayed */
 
-                if (r.height === 0 || r.width === 0)
+                if (r.height === 0 || r.width === 0) {
                     return;
-
+                }
                 var edges = rect2edges(r, context);
 
                 if (llist.length === 0 ||
                         (!isSameLine(edges.before, edges.after, llist[llist.length - 1].before, llist[llist.length - 1].after))
                         ) {
-
                     llist.push({
                         before: edges.before,
                         after: edges.after,
@@ -1081,7 +1106,6 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                     });
 
                 } else {
-
                     /* positive for BPD = lr and tb, negative for BPD = rl */
                     var bpd_dir = Math.sign(edges.after - edges.before);
 
@@ -1171,7 +1195,6 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
     }
 
     function isSameLine(before1, after1, before2, after2) {
-
         return ((after1 < after2) && (before1 > before2)) || ((after2 <= after1) && (before2 >= before1));
 
     }
@@ -1374,51 +1397,52 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                     }
 
                     for (var i in attr) {
-                        attr[i] = attr[i].trim();
+                        if (attr[i].hasOwnProperty(i)) {
+                            attr[i] = attr[i].trim();
 
-                        if (attr[i] === "monospaceSerif") {
+                            if (attr[i] === "monospaceSerif") {
 
-                            rslt.push("Courier New");
-                            rslt.push('"Liberation Mono"');
-                            rslt.push("Courier");
-                            rslt.push("monospace");
+                                rslt.push("Courier New");
+                                rslt.push('"Liberation Mono"');
+                                rslt.push("Courier");
+                                rslt.push("monospace");
 
-                        } else if (attr[i] === "proportionalSansSerif" || attr[i] === "default") {
+                            } else if (attr[i] === "proportionalSansSerif" || attr[i] === "default") {
 
-                            rslt.push("Arial");
-                            rslt.push("Helvetica");
-                            rslt.push('"Liberation Sans"');
-                            rslt.push("sans-serif");
+                                rslt.push("Arial");
+                                rslt.push("Helvetica");
+                                rslt.push('"Liberation Sans"');
+                                rslt.push("sans-serif");
 
-                        } else if (attr[i] === "monospace") {
+                            } else if (attr[i] === "monospace") {
+                               
+                                rslt.push("monospace");
 
-                            rslt.push("monospace");
+                            } else if (attr[i] === "sansSerif") {
 
-                        } else if (attr[i] === "sansSerif") {
+                                rslt.push("sans-serif");
 
-                            rslt.push("sans-serif");
+                            } else if (attr[i] === "serif") {
 
-                        } else if (attr[i] === "serif") {
+                                rslt.push("serif");
 
-                            rslt.push("serif");
+                            } else if (attr[i] === "monospaceSansSerif") {
 
-                        } else if (attr[i] === "monospaceSansSerif") {
+                                rslt.push("Consolas");
+                                rslt.push("monospace");
 
-                            rslt.push("Consolas");
-                            rslt.push("monospace");
+                            } else if (attr[i] === "proportionalSerif") {
 
-                        } else if (attr[i] === "proportionalSerif") {
+                                rslt.push("serif");
 
-                            rslt.push("serif");
+                            } else {
 
-                        } else {
+                                rslt.push(attr[i]);
 
-                            rslt.push(attr[i]);
+                            }
 
                         }
-
                     }
-
                     dom_element.style.fontFamily = rslt.join(",");
                 }
         ),
@@ -1698,9 +1722,9 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                         if (attr !== "none") {
 
                             for (var i in attr) {
+                                if (attr.hasOwnProperty(i)) {
 
-
-                                s.push(attr[i].x_off.toUsedLength(context.w, context.h) + "px " +
+                                    s.push(attr[i].x_off.toUsedLength(context.w, context.h) + "px " +
                                         attr[i].y_off.toUsedLength(context.w, context.h) + "px " +
                                         attr[i].b_radius.toUsedLength(context.w, context.h) + "px " +
                                         "rgba(" +
@@ -1710,7 +1734,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                                         (attr[i].color[3] / 255).toString() +
                                         ")"
                                         );
-
+                                }
                             }
 
                         }
@@ -1830,8 +1854,9 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
     var STYLMAP_BY_QNAME = {};
 
     for (var i in STYLING_MAP_DEFS) {
-
-        STYLMAP_BY_QNAME[STYLING_MAP_DEFS[i].qname] = STYLING_MAP_DEFS[i];
+        if (STYLING_MAP_DEFS.hasOwnProperty(i)) {
+            STYLMAP_BY_QNAME[STYLING_MAP_DEFS[i].qname] = STYLING_MAP_DEFS[i];
+        }
     }
 
     /* CSS property names */
