@@ -618,8 +618,6 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                 }
 
             }
-
-            /* TODO: clean-up the spans ? */
         }
     }
 
@@ -647,9 +645,10 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
         if (first.tagName === "SPAN" && second.tagName === "SPAN" && first._isd_element === second._isd_element) {
             first.textContent += second.textContent;
 
-            for (var s of second.style) {
-                if (s.indexOf("border") >= 0 || s.indexOf("padding") >= 0) {
-                    first.style[s] = second.style[s];
+            for (var i = 0; i < second.style.length; i++) {
+                var styleName = second.style[i];
+                if (styleName.indexOf("border") >= 0 || styleName.indexOf("padding") >= 0) {
+                    first.style[styleName] = second.style[styleName];
                 }
             }
 
