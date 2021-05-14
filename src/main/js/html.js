@@ -574,7 +574,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
             }
 
-            mergeSpans(proc_e);
+            mergeSpans(linelist);
         }
 
 
@@ -621,22 +621,22 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
         }
     }
 
-    function mergeSpans(node) {
-        for (var c = 0; c < node.children.length; c++) {
-            var child = node.children[c];
+    function mergeSpans(lineList) {
+        for (var i = 0; i < lineList.length; i++) {
+            var line = lineList[i];
 
-            mergeSpans(child);
-        }
+            for (var j = 1; j < line.elements.length;) {
+                var previous = line.elements[j-1];
+                var span = line.elements[j];
 
-        for (var i = 1; i < node.children.length;) {
-            var previous = node.children[i-1];
-            var span = node.children[i];
+                if (spanMerge(previous.node, span.node)) {
+                    //removed from DOM by spanMerge(), remove from the list too.
+                    line.elements.splice(j, 1);
+                    continue;
+                } else {
+                    j++;
+                }
 
-            if (previous.children.length === 0 && span.children.length === 0 && spanMerge(previous, span)) {
-                //deleted by spanMerge()
-                continue;
-            } else {
-                i++;
             }
         }
     }
@@ -655,6 +655,8 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
             second.parentElement.removeChild(second);
             return true;
         }
+
+        return false;
     }
 
     function applyLinePadding(lineList, lp, context) {
