@@ -99,9 +99,9 @@
                 /* flatten chained referential styling */
 
                 for (var sid in estack[0].styles) {
-
-                    mergeChainedStyles(estack[0], estack[0].styles[sid], errorHandler);
-
+                    if (estack[0].styles.hasOwnProperty(sid)) {
+                        mergeChainedStyles(estack[0], estack[0].styles[sid], errorHandler);
+                    }
                 }
 
             } else if (estack[0] instanceof P || estack[0] instanceof Span) {
@@ -271,6 +271,21 @@
 
             }
 
+            function rewriteNamespace(obj) {
+                if (imscNames.ttaf_map[obj.uri]) {
+                    obj.uri = imscNames.ttaf_map[obj.uri];
+                }
+            }
+
+            // Make ttaf1 namespaces ttml ones.
+            rewriteNamespace(node);
+            if (node.attributes) {
+                for (var attr in node.attributes) {
+                    if (node.attributes.hasOwnProperty(attr)) {
+                        rewriteNamespace(node.attributes[attr]);
+                    }
+                }
+            }
 
             /* process the element */
 
@@ -362,9 +377,9 @@
                         ini.initFromNode(node, errorHandler);
                         
                         for (var qn in ini.styleAttrs) {
-                            
-                            doc.head.styling.initials[qn] = ini.styleAttrs[qn];
-                            
+                            if (ini.styleAttrs.hasOwnProperty(qn)) {
+                                doc.head.styling.initials[qn] = ini.styleAttrs[qn];
+                            }
                         }
                         
                         estack.unshift(ini);
@@ -576,12 +591,14 @@
                     var attrs = [];
 
                     for (var a in node.attributes) {
-                        attrs[node.attributes[a].uri + " " + node.attributes[a].local] =
+                        if (node.attributes.hasOwnProperty(a)) {
+                            attrs[node.attributes[a].uri + " " + node.attributes[a].local] =
                                 {
                                     uri: node.attributes[a].uri,
                                     local: node.attributes[a].local,
                                     value: node.attributes[a].value
                                 };
+                        }
                     }
 
                     metadataHandler.onOpenTag(node.uri, node.local, attrs);
@@ -607,18 +624,18 @@
         /* AFAIK the only way to determine whether an object has members */
 
         for (var i in doc.head.layout.regions) {
+            if (doc.head.layout.regions.hasOwnProperty(i)) {
+                hasRegions = true;
 
-            hasRegions = true;
-
-            break;
-
+                break;
+            }
         }
 
         if (!hasRegions) {
 
             /* create default region */
 
-            var dr = Region.prototype.createDefaultRegion(doc.lang);
+            var dr = Region.prototype.createDefaultRegion(doc, errorHandler);
 
             doc.head.layout.regions[dr.id] = dr;
 
@@ -627,9 +644,9 @@
         /* resolve desired timing for regions */
 
         for (var region_i in doc.head.layout.regions) {
-
-            resolveTiming(doc, doc.head.layout.regions[region_i], null, null);
-
+            if (doc.head.layout.regions.hasOwnProperty(region_i)) {
+                resolveTiming(doc, doc.head.layout.regions[region_i], null, null);
+            }
         }
 
         /* resolve desired timing for content elements */
@@ -644,8 +661,35 @@
             cleanRubyContainers(doc.body);
         }
 
+        if (doc.body) {
+            pushBackgroundColorDown(doc.body);
+        }
+
         return doc;
     };
+
+    // Background colours on body or div look bad. As a post-parse step, move them to spans below (when undefined in the P)
+    function pushBackgroundColorDown(node, lastBG) {
+        var currentBG = node.styleAttrs && node.styleAttrs["http://www.w3.org/ns/ttml#styling backgroundColor"];
+
+        if (node.kind === "span") {
+            if (!currentBG && lastBG) {
+                if (!node.styleAttrs) {
+                    node.styleAttrs = {};
+                }
+                node.styleAttrs["http://www.w3.org/ns/ttml#styling backgroundColor"] = lastBG;
+            }
+        } else {
+            if (currentBG) {
+                delete node.styleAttrs["http://www.w3.org/ns/ttml#styling backgroundColor"];
+            }
+            if (node.contents) {
+                for (var i = 0; i < node.contents.length; i++) {
+                    pushBackgroundColorDown(node.contents[i], currentBG || lastBG);
+                }
+            }
+        }
+    }
 
     function cleanRubyContainers(element) {
         
@@ -714,21 +758,21 @@
         var s = null;
 
         for (var set_i in element.sets) {
+            if (element.sets.hasOwnProperty(set_i)) {
+                resolveTiming(doc, element.sets[set_i], s, element);
 
-            resolveTiming(doc, element.sets[set_i], s, element);
+                if (element.timeContainer === "seq") {
+                    
+                    implicit_end = element.sets[set_i].end;
+                    
+                } else {
+                    
+                    implicit_end = Math.max(implicit_end, element.sets[set_i].end);
+                    
+                }
 
-            if (element.timeContainer === "seq") {
-
-                implicit_end = element.sets[set_i].end;
-
-            } else {
-
-                implicit_end = Math.max(implicit_end, element.sets[set_i].end);
-
+                s = element.sets[set_i];
             }
-
-            s = element.sets[set_i];
-
         }
 
         if (!('contents' in element)) {
@@ -752,21 +796,21 @@
         } else {
 
             for (var content_i in element.contents) {
+                if (element.contents.hasOwnProperty(content_i)) {
+                    resolveTiming(doc, element.contents[content_i], s, element);
 
-                resolveTiming(doc, element.contents[content_i], s, element);
-
-                if (element.timeContainer === "seq") {
-
-                    implicit_end = element.contents[content_i].end;
-
-                } else {
-
-                    implicit_end = Math.max(implicit_end, element.contents[content_i].end);
-
+                    if (element.timeContainer === "seq") {
+                       
+                        implicit_end = element.contents[content_i].end;
+                       
+                    } else {
+                       
+                        implicit_end = Math.max(implicit_end, element.contents[content_i].end);
+                       
+                    }
+                    
+                    s = element.contents[content_i];
                 }
-
-                s = element.contents[content_i];
-
             }
 
         }
@@ -980,15 +1024,15 @@
         this.styleAttrs = {};
         
         for (var i in node.attributes) {
-
-            if (node.attributes[i].uri === imscNames.ns_itts ||
-                node.attributes[i].uri === imscNames.ns_ebutts ||
-                node.attributes[i].uri === imscNames.ns_tts) {
+            if (node.attributes.hasOwnProperty(i)) {
+                if (node.attributes[i].uri === imscNames.ns_itts ||
+                    node.attributes[i].uri === imscNames.ns_ebutts ||
+                    node.attributes[i].uri === imscNames.ns_tts) {
                 
-                var qname = node.attributes[i].uri + " " + node.attributes[i].local;
+                    var qname = node.attributes[i].uri + " " + node.attributes[i].local;
                 
-                this.styleAttrs[qname] = node.attributes[i].value;
-
+                    this.styleAttrs[qname] = node.attributes[i].value;
+                }
             }
         }
         
@@ -1220,15 +1264,64 @@
     function Region() {
     }
 
-    Region.prototype.createDefaultRegion = function (xmllang) {
+    Region.prototype.createDefaultRegion = function (doc, errorHandler) {
         var r = new Region();
+        var defaultRegionAttr = {
+            "tts:displayAlign":{
+                "name":"tts:displayAlign",
+                "value":"after",
+                "prefix":"tts",
+                "local":"displayAlign",
+                "uri":"http://www.w3.org/ns/ttml#styling"
+            },
+            "tts:extent":{
+                "name":"tts:extent",
+                "value":"80% 20%",
+                "prefix":"tts",
+                "local":"extent",
+                "uri":"http://www.w3.org/ns/ttml#styling"
+            },
+            "tts:origin":{
+                "name":"tts:origin",
+                "value":"10% 70%",
+                "prefix":"tts",
+                "local":"origin",
+                "uri":"http://www.w3.org/ns/ttml#styling"
+            },
+            "tts:overflow":{
+                "name":"tts:overflow",
+                "value":"visible",
+                "prefix":"tts",
+                "local":"overflow",
+                "uri":"http://www.w3.org/ns/ttml#styling"
+            }
+        };
+        var defaultRegionNode = {
+            "name": "region",
+            "attributes": defaultRegionAttr,
+            "ns": {
+                "": "http://www.w3.org/ns/ttml",
+                "ebuttm": "urn:ebu:tt:metadata",
+                "ebutts": "urn:ebu:tt:style",
+                "ittp": "http://www.w3.org/ns/ttml/profile/imsc1#parameter",
+                "itts": "http://www.w3.org/ns/ttml/profile/imsc1#styling",
+                "ttm": "http://www.w3.org/ns/ttml#metadata",
+                "ttp": "http://www.w3.org/ns/ttml#parameter",
+                "tts": "http://www.w3.org/ns/ttml#styling",
+                "xml": "http://www.w3.org/XML/1998/namespace"
+            },
+            "prefix": "",
+            "local": "region",
+            "uri": "http://www.w3.org/ns/ttml",
+            "isSelfClosing": true
+        };
 
         IdentifiedElement.call(r, '');
-        StyledElement.call(r, {});
+        StyledElement.prototype.initFromNode.call(r, doc, null, defaultRegionNode, errorHandler);
         AnimatedElement.call(r, []);
         TimedElement.call(r, 0, Number.POSITIVE_INFINITY, null);
 
-        this.lang = xmllang;
+        this.lang = doc.xmllang;
 
         return r;
     };
@@ -1269,17 +1362,17 @@
         this.value = null;
 
         for (var qname in styles) {
+            if (styles.hasOwnProperty(qname)) {
+                if (this.qname) {
 
-            if (this.qname) {
+                    reportError(errorHandler, "More than one style specified on set");
+                    break;
 
-                reportError(errorHandler, "More than one style specified on set");
-                break;
+                }
 
+                this.qname = qname;
+                this.value = styles[qname];
             }
-
-            this.qname = qname;
-            this.value = styles[qname];
-
         }
 
     };
@@ -1291,7 +1384,14 @@
 
 
     function elementGetXMLID(node) {
-        return node && 'xml:id' in node.attributes ? node.attributes['xml:id'].value || null : null;
+        var ret = null;
+        if (node) {
+            var idAttribute = node.attributes['xml:id'] || node.attributes.id;
+            if (idAttribute) {
+                ret = idAttribute.value || null;
+            }
+        }
+        return ret;
     }
 
     function elementGetRegionID(node) {
@@ -1333,31 +1433,31 @@
         if (node !== null) {
 
             for (var i in node.attributes) {
+                if (node.attributes.hasOwnProperty(i)) {
+                    var qname = node.attributes[i].uri + " " + node.attributes[i].local;
 
-                var qname = node.attributes[i].uri + " " + node.attributes[i].local;
+                    var sa = imscStyles.byQName[qname];
 
-                var sa = imscStyles.byQName[qname];
+                    if (sa !== undefined) {
 
-                if (sa !== undefined) {
+                        var val = sa.parse(node.attributes[i].value);
 
-                    var val = sa.parse(node.attributes[i].value);
+                        if (val !== null) {
 
-                    if (val !== null) {
+                            s[qname] = val;
 
-                        s[qname] = val;
+                            /* TODO: consider refactoring errorHandler into parse and compute routines */
 
-                        /* TODO: consider refactoring errorHandler into parse and compute routines */
+                            if (sa === imscStyles.byName.zIndex) {
+                                reportWarning(errorHandler, "zIndex attribute present but not used by IMSC1 since regions do not overlap");
+                            }
 
-                        if (sa === imscStyles.byName.zIndex) {
-                            reportWarning(errorHandler, "zIndex attribute present but not used by IMSC1 since regions do not overlap");
+                        } else {
+
+                            reportError(errorHandler, "Cannot parse styling attribute " + qname + " --> " + node.attributes[i].value);
+
                         }
-
-                    } else {
-
-                        reportError(errorHandler, "Cannot parse styling attribute " + qname + " --> " + node.attributes[i].value);
-
                     }
-
                 }
 
             }
@@ -1369,11 +1469,12 @@
 
     function findAttribute(node, ns, name) {
         for (var i in node.attributes) {
-
-            if (node.attributes[i].uri === ns &&
+            if (node.attributes.hasOwnProperty(i)) {
+                if (node.attributes[i].uri === ns &&
                     node.attributes[i].local === name) {
 
-                return node.attributes[i].value;
+                    return node.attributes[i].value;
+                }
             }
         }
 
@@ -1747,12 +1848,12 @@
     function mergeStylesIfNotPresent(from_styles, into_styles) {
 
         for (var sname in from_styles) {
+            if (from_styles.hasOwnProperty(sname)) {
+                if (sname in into_styles)
+                    continue;
 
-            if (sname in into_styles)
-                continue;
-
-            into_styles[sname] = from_styles[sname];
-
+                into_styles[sname] = from_styles[sname];
+            }
         }
 
     }

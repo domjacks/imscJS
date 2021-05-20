@@ -139,7 +139,7 @@
 
         var r = [];
 
-        for (var i in shadows) {
+        for (var i=0;i<shadows.length;i++) {
 
             var shadow = shadows[i].split(" ");
 
@@ -232,15 +232,16 @@
         /* initial clean-up pass */
 
         for (var j in s) {
+            if (s.hasOwnProperty(j)) {
+                if (!isKeyword(s[j])) {
 
-            if (!isKeyword(s[j])) {
+                    var l = imscUtils.parseLength(s[j]);
 
-                var l = imscUtils.parseLength(s[j]);
+                    if (l === null)
+                        return null;
 
-                if (l === null)
-                    return null;
-
-                s[j] = l;
+                    s[j] = l;
+                }
             }
 
         }
@@ -343,6 +344,10 @@
 
     imscUtils.ComputedLength.prototype.toUsedLength = function (width, height) {
         return width * this.rw + height * this.rh;
+    };
+
+    imscUtils.ComputedLength.prototype.multiply = function (value, factor) {
+        return factor ? value * factor: value;
     };
 
     imscUtils.ComputedLength.prototype.isZero = function () {

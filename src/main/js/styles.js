@@ -192,7 +192,7 @@
                 var ffs = str.split(",");
                 var rslt = [];
 
-                for (var i in ffs) {
+                for (var i=0;i<ffs.length;i++) {
 
                     if (ffs[i].charAt(0) !== "'" && ffs[i].charAt(0) !== '"') {
 
@@ -460,8 +460,7 @@
                 if (s.length > 4)
                     return null;
                 var r = [];
-                for (var i in s) {
-
+                for (var i=0;i<s.length;i++) {
                     var l = imscUtils.parseLength(s[i]);
                     if (!l)
                         return null;
@@ -538,7 +537,7 @@
 
                 var out = [];
 
-                for (var i in padding) {
+                for (var i=0;i<padding.length;i++) {
 
                     if (padding[i].value === 0) {
 
@@ -756,7 +755,7 @@
         new StylingAttributeDefinition(
             imscNames.ns_tts,
             "showBackground",
-            "always",
+            "whenActive",
             ['region'],
             false,
             true,
@@ -834,7 +833,7 @@
 
                 var rslt = {style: null, symbol: null, color: null, position: null};
 
-                for (var i in e) {
+                for (var i=0;i<e.length;i++) {
 
                     if (e[i] === "none" || e[i] === "auto") {
 
@@ -990,65 +989,65 @@
                 var r = [];
 
                 for (var i in attr) {
+                    if (i.hasOwnProperty(attr)) {
+                        var shadow = {};
 
-                    var shadow = {};
-
-                    shadow.x_off = imscUtils.toComputedLength(
-                        attr[i][0].value,
-                        attr[i][0].unit,
-                        null,
-                        element.styleAttrs[imscStyles.byName.fontSize.qname],
-                        null,
-                        doc.pxLength.w
+                        shadow.x_off = imscUtils.toComputedLength(
+                          attr[i][0].value,
+                          attr[i][0].unit,
+                          null,
+                          element.styleAttrs[imscStyles.byName.fontSize.qname],
+                          null,
+                          doc.pxLength.w
                         );
 
-                    if (shadow.x_off === null)
-                        return null;
-
-                    shadow.y_off = imscUtils.toComputedLength(
-                        attr[i][1].value,
-                        attr[i][1].unit,
-                        null,
-                        element.styleAttrs[imscStyles.byName.fontSize.qname],
-                        null,
-                        doc.pxLength.h
-                        );
-
-                    if (shadow.y_off === null)
-                        return null;
-
-                    if (attr[i][2] === null) {
-
-                        shadow.b_radius = 0;
-
-                    } else {
-
-                        shadow.b_radius = imscUtils.toComputedLength(
-                            attr[i][2].value,
-                            attr[i][2].unit,
-                            null,
-                            element.styleAttrs[imscStyles.byName.fontSize.qname],
-                            null,
-                            doc.pxLength.h
-                            );
-
-                        if (shadow.b_radius === null)
+                        if (shadow.x_off === null)
                             return null;
 
+                        shadow.y_off = imscUtils.toComputedLength(
+                           attr[i][1].value,
+                           attr[i][1].unit,
+                           null,
+                           element.styleAttrs[imscStyles.byName.fontSize.qname],
+                           null,
+                           doc.pxLength.h
+                        );
+
+                        if (shadow.y_off === null)
+                            return null;
+
+                        if (attr[i][2] === null) {
+
+                            shadow.b_radius = 0;
+
+                        } else {
+
+                            shadow.b_radius = imscUtils.toComputedLength(
+                               attr[i][2].value,
+                               attr[i][2].unit,
+                               null,
+                               element.styleAttrs[imscStyles.byName.fontSize.qname],
+                               null,
+                               doc.pxLength.h
+                            );
+
+                            if (shadow.b_radius === null)
+                                return null;
+
+                        }
+
+                        if (attr[i][3] === null) {
+
+                            shadow.color = element.styleAttrs[imscStyles.byName.color.qname];
+
+                        } else {
+
+                            shadow.color = attr[i][3];
+
+                        }
+
+                        r.push(shadow);
                     }
-
-                    if (attr[i][3] === null) {
-
-                        shadow.color = element.styleAttrs[imscStyles.byName.color.qname];
-
-                    } else {
-
-                        shadow.color = attr[i][3];
-
-                    }
-
-                    r.push(shadow);
-
                 }
 
                 return r;
@@ -1184,7 +1183,7 @@
         new StylingAttributeDefinition(
             imscNames.ns_itts,
             "fillLineGap",
-            "false",
+            "true",
             ['p'],
             true,
             true,
@@ -1199,14 +1198,16 @@
 
     imscStyles.byQName = {};
     for (var i in imscStyles.all) {
-
-        imscStyles.byQName[imscStyles.all[i].qname] = imscStyles.all[i];
+        if (imscStyles.all.hasOwnProperty(i)) {
+            imscStyles.byQName[imscStyles.all[i].qname] = imscStyles.all[i];
+        }
     }
 
     imscStyles.byName = {};
     for (var j in imscStyles.all) {
-
-        imscStyles.byName[imscStyles.all[j].name] = imscStyles.all[j];
+        if (imscStyles.all.hasOwnProperty(j)) {
+            imscStyles.byName[imscStyles.all[j].name] = imscStyles.all[j];
+        }
     }
 
 
