@@ -207,7 +207,7 @@
 
                 var s = new AnonymousSpan();
 
-                s.initFromText(doc, estack[0], str, xmlspacestack[0], errorHandler);
+                s.initFromText(doc, estack[0], str, xmllangstack[0], xmlspacestack[0], errorHandler);
 
                 estack[0].contents.push(s);
 
@@ -302,7 +302,7 @@
 
                     doc = new TT();
 
-                    doc.initFromNode(node, errorHandler);
+                    doc.initFromNode(node, xmllangstack[0], errorHandler);
 
                     estack.unshift(doc);
 
@@ -409,7 +409,7 @@
 
                     var r = new Region();
 
-                    r.initFromNode(doc, node, errorHandler);
+                    r.initFromNode(doc, node, xmllangstack[0], errorHandler);
 
                     if (!r.id || r.id in doc.head.layout.regions) {
 
@@ -439,7 +439,7 @@
 
                     var b = new Body();
 
-                    b.initFromNode(doc, node, errorHandler);
+                    b.initFromNode(doc, node, xmllangstack[0], errorHandler);
 
                     doc.body = b;
 
@@ -455,7 +455,7 @@
 
                     var d = new Div();
 
-                    d.initFromNode(doc, estack[0], node, errorHandler);
+                    d.initFromNode(doc, estack[0], node, xmllangstack[0], errorHandler);
                     
                     /* transform smpte:backgroundImage to TTML2 image element */
                     
@@ -480,7 +480,7 @@
 
                     var img = new Image();
                     
-                    img.initFromNode(doc, estack[0], node, errorHandler);
+                    img.initFromNode(doc, estack[0], node, xmllangstack[0], errorHandler);
                     
                     estack[0].contents.push(img);
 
@@ -496,7 +496,7 @@
 
                     var p = new P();
 
-                    p.initFromNode(doc, estack[0], node, errorHandler);
+                    p.initFromNode(doc, estack[0], node, xmllangstack[0], errorHandler);
 
                     estack[0].contents.push(p);
 
@@ -512,7 +512,7 @@
 
                     var ns = new Span();
 
-                    ns.initFromNode(doc, estack[0], node, xmlspacestack[0], errorHandler);
+                    ns.initFromNode(doc, estack[0], node, xmllangstack[0], xmlspacestack[0], errorHandler);
 
                     estack[0].contents.push(ns);
 
@@ -528,7 +528,7 @@
 
                     var nb = new Br();
 
-                    nb.initFromNode(doc, estack[0], node, errorHandler);
+                    nb.initFromNode(doc, estack[0], node, xmllangstack[0], errorHandler);
 
                     estack[0].contents.push(nb);
 
@@ -854,7 +854,7 @@
         this.body = null;
     }
 
-    TT.prototype.initFromNode = function (node, errorHandler) {
+    TT.prototype.initFromNode = function (node, xmllang, errorHandler) {
 
         /* compute cell resolution */
 
@@ -917,7 +917,12 @@
         this.dimensions = {
                 'h': new imscUtils.ComputedLength(0, 1),
                 'w': new imscUtils.ComputedLength(1, 0)
-    };
+
+        };
+
+        /* xml:lang */
+
+        this.lang = xmllang;
 
     };
 
@@ -1053,7 +1058,7 @@
         this.type = type;
     }
 
-    Image.prototype.initFromNode = function (doc, parent, node, errorHandler) {
+    Image.prototype.initFromNode = function (doc, parent, node, xmllang, errorHandler) {
         this.src = 'src' in node.attributes ? node.attributes.src.value : null;
         
         if (! this.src) {
@@ -1070,6 +1075,8 @@
         TimedElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         AnimatedElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         LayoutElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
+
+        this.lang = xmllang;
     };
 
     /*
@@ -1154,12 +1161,14 @@
     }
 
 
-    Body.prototype.initFromNode = function (doc, node, errorHandler) {
+    Body.prototype.initFromNode = function (doc, node, xmllang, errorHandler) {
         StyledElement.prototype.initFromNode.call(this, doc, null, node, errorHandler);
         TimedElement.prototype.initFromNode.call(this, doc, null, node, errorHandler);
         AnimatedElement.prototype.initFromNode.call(this, doc, null, node, errorHandler);
         LayoutElement.prototype.initFromNode.call(this, doc, null, node, errorHandler);
         ContainerElement.prototype.initFromNode.call(this, doc, null, node, errorHandler);
+
+        this.lang = xmllang;
     };
 
     /*
@@ -1170,12 +1179,14 @@
         ContentElement.call(this, 'div');
     }
 
-    Div.prototype.initFromNode = function (doc, parent, node, errorHandler) {
+    Div.prototype.initFromNode = function (doc, parent, node, xmllang, errorHandler) {
         StyledElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         TimedElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         AnimatedElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         LayoutElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         ContainerElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
+
+        this.lang = xmllang;
     };
 
     /*
@@ -1186,12 +1197,14 @@
         ContentElement.call(this, 'p');
     }
 
-    P.prototype.initFromNode = function (doc, parent, node, errorHandler) {
+    P.prototype.initFromNode = function (doc, parent, node, xmllang, errorHandler) {
         StyledElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         TimedElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         AnimatedElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         LayoutElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         ContainerElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
+
+        this.lang = xmllang;
     };
 
     /*
@@ -1202,7 +1215,7 @@
         ContentElement.call(this, 'span');
     }
 
-    Span.prototype.initFromNode = function (doc, parent, node, xmlspace, errorHandler) {
+    Span.prototype.initFromNode = function (doc, parent, node, xmllang, xmlspace, errorHandler) {
         StyledElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         TimedElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         AnimatedElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
@@ -1210,6 +1223,7 @@
         ContainerElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
 
         this.space = xmlspace;
+        this.lang = xmllang;
     };
 
     /*
@@ -1220,11 +1234,12 @@
         ContentElement.call(this, 'span');
     }
 
-    AnonymousSpan.prototype.initFromText = function (doc, parent, text, xmlspace, errorHandler) {
+    AnonymousSpan.prototype.initFromText = function (doc, parent, text, xmllang, xmlspace, errorHandler) {
         TimedElement.prototype.initFromNode.call(this, doc, parent, null, errorHandler);
 
         this.text = text;
         this.space = xmlspace;
+        this.lang = xmllang;
     };
 
     /*
@@ -1235,9 +1250,11 @@
         ContentElement.call(this, 'br');
     }
 
-    Br.prototype.initFromNode = function (doc, parent, node, errorHandler) {
+    Br.prototype.initFromNode = function (doc, parent, node, xmllang, errorHandler) {
         LayoutElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         TimedElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
+
+        this.lang = xmllang;
     };
 
     /*
@@ -1305,10 +1322,12 @@
         AnimatedElement.call(r, []);
         TimedElement.call(r, 0, Number.POSITIVE_INFINITY, null);
 
+        this.lang = doc.xmllang;
+
         return r;
     };
 
-    Region.prototype.initFromNode = function (doc, node, errorHandler) {
+    Region.prototype.initFromNode = function (doc, node, xmllang, errorHandler) {
         IdentifiedElement.prototype.initFromNode.call(this, doc, null, node, errorHandler);
         TimedElement.prototype.initFromNode.call(this, doc, null, node, errorHandler);
         AnimatedElement.prototype.initFromNode.call(this, doc, null, node, errorHandler);
@@ -1320,6 +1339,10 @@
         /* remember referential styles for merging after nested styling is processed*/
 
         this.styleRefs = elementGetStyleRefs(node);
+
+        /* xml:lang */
+
+        this.lang = xmllang;
     };
 
     /*
@@ -2097,7 +2120,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
         for (var i in isd.contents) {
             if (isd.contents.hasOwnProperty(i)) {
-                processElement(context, rootcontainer, isd.contents[i]);
+                processElement(context, rootcontainer, isd.contents[i], isd);
             }
         }
 
@@ -2120,7 +2143,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
         return canonicalColorMap;
     }
 
-    function processElement(context, dom_parent, isd_element) {
+    function processElement(context, dom_parent, isd_element, isd_parent) {
         var e;
 
         if (isd_element.kind === 'region') {
@@ -2208,6 +2231,16 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
             reportError(context.errorHandler, "Error processing ISD element kind: " + isd_element.kind);
 
             return;
+
+        }
+
+        /* set language */
+
+        if (isd_element.lang) {
+
+            if (isd_element.kind === 'region' || isd_element.lang !== isd_parent.lang) {
+                e.lang = isd_element.lang;
+            }
 
         }
 
@@ -2355,7 +2388,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
             }
 
             if (imscStyles.byName.textCombine.qname in isd_element.styleAttrs &&
-                    isd_element.styleAttrs[imscStyles.byName.textCombine.qname][0] === "all") {
+                    isd_element.styleAttrs[imscStyles.byName.textCombine.qname] === "all") {
 
                 /* ignore tate-chu-yoku since line break cannot happen within */
                 e.textContent = isd_element.text;
@@ -2411,7 +2444,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
         for (var k in isd_element.contents) {
             if (isd_element.contents.hasOwnProperty(k)) {
-                processElement(context, proc_e, isd_element.contents[k]);
+                processElement(context, proc_e, isd_element.contents[k], isd_element);
             }
         }
 
@@ -3168,9 +3201,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
         if (attr.style === "none") {
 
-            dom_element.style[TEXTEMPHASISSTYLE_PROP] = "none";
-
-            /* no need to set position, so return */
+            /* text-emphasis is not inherited and the default is none, so nothing to do */
             
             return;
         
@@ -3212,14 +3243,14 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
         }
     }
 
-    function HTMLStylingMapDefintion(qName, mapFunc) {
+    function HTMLStylingMapDefinition(qName, mapFunc) {
         this.qname = qName;
         this.map = mapFunc;
     }
 
     var STYLING_MAP_DEFS = [
 
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling backgroundColor",
                 function (context, dom_element, isd_element, attr) {
 
@@ -3250,7 +3281,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                             ")";
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling color",
                 function (context, dom_element, isd_element, attr) {
                     /*
@@ -3274,7 +3305,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                             ")";
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling direction",
                 function (context, dom_element, isd_element, attr) {
 
@@ -3282,11 +3313,11 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling display",
                 function (context, dom_element, isd_element, attr) {}
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling displayAlign",
                 function (context, dom_element, isd_element, attr) {
 
@@ -3313,7 +3344,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling extent",
                 function (context, dom_element, isd_element, attr) {
                     /* TODO: this is super ugly */
@@ -3347,7 +3378,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling fontFamily",
                 function (context, dom_element, isd_element, attr) {
 
@@ -3422,7 +3453,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                 }
         ),
 
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling shear",
                 function (context, dom_element, isd_element, attr) {
 
@@ -3448,26 +3479,26 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                 }
         ),
 
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling fontSize",
                 function (context, dom_element, isd_element, attr) {
                     dom_element.style.fontSize = attr.multiply(attr.toUsedLength(context.w, context.h), context.options.sizeAdjust) + "px";
                 }
         ),
 
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling fontStyle",
                 function (context, dom_element, isd_element, attr) {
                     dom_element.style.fontStyle = attr;
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling fontWeight",
                 function (context, dom_element, isd_element, attr) {
                     dom_element.style.fontWeight = attr;
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling lineHeight",
                 function (context, dom_element, isd_element, attr) {
                     if (attr === "normal") {
@@ -3484,7 +3515,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                     }
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling opacity",
                 function (context, dom_element, isd_element, attr) {
                     /*
@@ -3500,20 +3531,20 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                     dom_element.style.opacity = opacity;
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling origin",
                 function (context, dom_element, isd_element, attr) {
                     dom_element.style.top = attr.h.toUsedLength(context.w, context.h) + "px";
                     dom_element.style.left = attr.w.toUsedLength(context.w, context.h) + "px";
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling overflow",
                 function (context, dom_element, isd_element, attr) {
                     dom_element.style.overflow = attr;
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling padding",
                 function (context, dom_element, isd_element, attr) {
 
@@ -3531,20 +3562,20 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                     dom_element.style.padding = rslt.join(" ");
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling position",
                 function (context, dom_element, isd_element, attr) {
                     dom_element.style.top = attr.h.toUsedLength(context.w, context.h) + "px";
                     dom_element.style.left = attr.w.toUsedLength(context.w, context.h) + "px";
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling rubyAlign",
                 function (context, dom_element, isd_element, attr) {
                     dom_element.style.rubyAlign = attr === "spaceAround" ? "space-around" : "center";
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling rubyPosition",
                 function (context, dom_element, isd_element, attr) {
 
@@ -3585,11 +3616,11 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                     }
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling showBackground",
                 null
                 ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling textAlign",
                 function (context, dom_element, isd_element, attr) {
 
@@ -3615,20 +3646,20 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling textDecoration",
                 function (context, dom_element, isd_element, attr) {
                     dom_element.style.textDecoration = attr.join(" ").replace("lineThrough", "line-through");
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling textOutline",
                 function (context, dom_element, isd_element, attr) {
 
                     /* defer to tts:textShadow */
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling textShadow",
                 function (context, dom_element, isd_element, attr) {
 
@@ -3719,15 +3750,15 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                     }
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling textCombine",
                 function (context, dom_element, isd_element, attr) {
 
-                    dom_element.style.textCombineUpright = attr.join(" ");
+                    dom_element.style.textCombineUpright = attr;
 
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling textEmphasis",
                 function (context, dom_element, isd_element, attr) {
 
@@ -3735,7 +3766,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling unicodeBidi",
                 function (context, dom_element, isd_element, attr) {
 
@@ -3750,13 +3781,13 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                     dom_element.style.unicodeBidi = ub;
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling visibility",
                 function (context, dom_element, isd_element, attr) {
                     dom_element.style.visibility = attr;
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling wrapOption",
                 function (context, dom_element, isd_element, attr) {
 
@@ -3782,7 +3813,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling writingMode",
                 function (context, dom_element, isd_element, attr) {
 
@@ -3808,13 +3839,13 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml#styling zIndex",
                 function (context, dom_element, isd_element, attr) {
                     dom_element.style.zIndex = attr;
                 }
         ),
-        new HTMLStylingMapDefintion(
+        new HTMLStylingMapDefinition(
                 "http://www.w3.org/ns/ttml/profile/imsc1#styling forcedDisplay",
                 function (context, dom_element, isd_element, attr) {
 
@@ -4542,6 +4573,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
     function ISD(tt) {
         this.contents = [];
         this.aspectRatio = tt.aspectRatio;
+        this.lang = tt.lang;
     }
 
     function ISDContentElement(ttelem) {
@@ -4549,6 +4581,10 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
         /* assume the element is a region if it does not have a kind */
 
         this.kind = ttelem.kind || 'region';
+
+        /* copy lang */
+
+        this.lang = ttelem.lang;
 
         /* copy id */
 
@@ -4914,10 +4950,7 @@ exports.renderHTML = require('./html').render;
             imscNames.ns_tts,
             "fontFamily",
             "default",
-            [
-                'p',
-                'span',
-            ],
+            ['span', 'p'],
             true,
             true,
             function (str) {
@@ -4981,10 +5014,7 @@ exports.renderHTML = require('./html').render;
             imscNames.ns_tts,
             "fontSize",
             "1c",
-            [
-                'p',
-                'span',
-            ],
+            ['span', 'p'],
             true,
             true,
             imscUtils.parseLength,
@@ -5008,7 +5038,7 @@ exports.renderHTML = require('./html').render;
             imscNames.ns_tts,
             "fontStyle",
             "normal",
-            ['span'],
+            ['span', 'p'],
             true,
             true,
             function (str) {
@@ -5022,7 +5052,7 @@ exports.renderHTML = require('./html').render;
             imscNames.ns_tts,
             "fontWeight",
             "normal",
-            ['span'],
+            ['span', 'p'],
             true,
             true,
             function (str) {
@@ -5535,16 +5565,9 @@ exports.renderHTML = require('./html').render;
             true,
             true,
             function (str) {
-                var s = str.split(" ");
+                if (str === "none" || str === "all") {
 
-                if (s.length === 1) {
-
-                    if (s[0] === "none" || s[0] === "all") {
-
-                        return [s[0]];
-
-                    }
-
+                    return str;
                 }
 
                 return null;
