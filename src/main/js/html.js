@@ -473,6 +473,8 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                         cbuf = '';
 
+                        //For the sake of merging these back together, record what isd element generated it.
+                        span._isd_element = isd_element;
                     }
 
                 }
@@ -572,6 +574,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
             }
 
+            mergeSpans(linelist);
         }
 
 
@@ -615,10 +618,45 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                 }
 
             }
-
-            /* TODO: clean-up the spans ? */
-
         }
+    }
+
+    function mergeSpans(lineList) {
+        for (var i = 0; i < lineList.length; i++) {
+            var line = lineList[i];
+
+            for (var j = 1; j < line.elements.length;) {
+                var previous = line.elements[j-1];
+                var span = line.elements[j];
+
+                if (spanMerge(previous.node, span.node)) {
+                    //removed from DOM by spanMerge(), remove from the list too.
+                    line.elements.splice(j, 1);
+                    continue;
+                } else {
+                    j++;
+                }
+
+            }
+        }
+    }
+
+    function spanMerge(first, second) {
+        if (first.tagName === "SPAN" && second.tagName === "SPAN" && first._isd_element === second._isd_element) {
+            first.textContent += second.textContent;
+
+            for (var i = 0; i < second.style.length; i++) {
+                var styleName = second.style[i];
+                if (styleName.indexOf("border") >= 0 || styleName.indexOf("padding") >= 0) {
+                    first.style[styleName] = second.style[styleName];
+                }
+            }
+
+            second.parentElement.removeChild(second);
+            return true;
+        }
+
+        return false;
     }
 
     function applyLinePadding(lineList, lp, context) {
