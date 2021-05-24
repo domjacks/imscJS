@@ -185,10 +185,7 @@
             imscNames.ns_tts,
             "fontFamily",
             "default",
-            [
-                'p',
-                'span',
-            ],
+            ['span', 'p'],
             true,
             true,
             function (str) {
@@ -252,10 +249,7 @@
             imscNames.ns_tts,
             "fontSize",
             "1c",
-            [
-                'p',
-                'span',
-            ],
+            ['span', 'p'],
             true,
             true,
             imscUtils.parseLength,
@@ -279,7 +273,7 @@
             imscNames.ns_tts,
             "fontStyle",
             "normal",
-            ['span'],
+            ['span', 'p'],
             true,
             true,
             function (str) {
@@ -293,7 +287,7 @@
             imscNames.ns_tts,
             "fontWeight",
             "normal",
-            ['span'],
+            ['span', 'p'],
             true,
             true,
             function (str) {
@@ -806,16 +800,9 @@
             true,
             true,
             function (str) {
-                var s = str.split(" ");
+                if (str === "none" || str === "all") {
 
-                if (s.length === 1) {
-
-                    if (s[0] === "none" || s[0] === "all") {
-
-                        return [s[0]];
-
-                    }
-
+                    return str;
                 }
 
                 return null;

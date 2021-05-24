@@ -206,7 +206,7 @@
 
                 var s = new AnonymousSpan();
 
-                s.initFromText(doc, estack[0], str, xmlspacestack[0], errorHandler);
+                s.initFromText(doc, estack[0], str, xmllangstack[0], xmlspacestack[0], errorHandler);
 
                 estack[0].contents.push(s);
 
@@ -301,7 +301,7 @@
 
                     doc = new TT();
 
-                    doc.initFromNode(node, errorHandler);
+                    doc.initFromNode(node, xmllangstack[0], errorHandler);
 
                     estack.unshift(doc);
 
@@ -408,7 +408,7 @@
 
                     var r = new Region();
 
-                    r.initFromNode(doc, node, errorHandler);
+                    r.initFromNode(doc, node, xmllangstack[0], errorHandler);
 
                     if (!r.id || r.id in doc.head.layout.regions) {
 
@@ -438,7 +438,7 @@
 
                     var b = new Body();
 
-                    b.initFromNode(doc, node, errorHandler);
+                    b.initFromNode(doc, node, xmllangstack[0], errorHandler);
 
                     doc.body = b;
 
@@ -454,7 +454,7 @@
 
                     var d = new Div();
 
-                    d.initFromNode(doc, estack[0], node, errorHandler);
+                    d.initFromNode(doc, estack[0], node, xmllangstack[0], errorHandler);
                     
                     /* transform smpte:backgroundImage to TTML2 image element */
                     
@@ -479,7 +479,7 @@
 
                     var img = new Image();
                     
-                    img.initFromNode(doc, estack[0], node, errorHandler);
+                    img.initFromNode(doc, estack[0], node, xmllangstack[0], errorHandler);
                     
                     estack[0].contents.push(img);
 
@@ -495,7 +495,7 @@
 
                     var p = new P();
 
-                    p.initFromNode(doc, estack[0], node, errorHandler);
+                    p.initFromNode(doc, estack[0], node, xmllangstack[0], errorHandler);
 
                     estack[0].contents.push(p);
 
@@ -511,7 +511,7 @@
 
                     var ns = new Span();
 
-                    ns.initFromNode(doc, estack[0], node, xmlspacestack[0], errorHandler);
+                    ns.initFromNode(doc, estack[0], node, xmllangstack[0], xmlspacestack[0], errorHandler);
 
                     estack[0].contents.push(ns);
 
@@ -527,7 +527,7 @@
 
                     var nb = new Br();
 
-                    nb.initFromNode(doc, estack[0], node, errorHandler);
+                    nb.initFromNode(doc, estack[0], node, xmllangstack[0], errorHandler);
 
                     estack[0].contents.push(nb);
 
@@ -853,7 +853,7 @@
         this.body = null;
     }
 
-    TT.prototype.initFromNode = function (node, errorHandler) {
+    TT.prototype.initFromNode = function (node, xmllang, errorHandler) {
 
         /* compute cell resolution */
 
@@ -916,7 +916,12 @@
         this.dimensions = {
                 'h': new imscUtils.ComputedLength(0, 1),
                 'w': new imscUtils.ComputedLength(1, 0)
-    };
+
+        };
+
+        /* xml:lang */
+
+        this.lang = xmllang;
 
     };
 
@@ -1052,7 +1057,7 @@
         this.type = type;
     }
 
-    Image.prototype.initFromNode = function (doc, parent, node, errorHandler) {
+    Image.prototype.initFromNode = function (doc, parent, node, xmllang, errorHandler) {
         this.src = 'src' in node.attributes ? node.attributes.src.value : null;
         
         if (! this.src) {
@@ -1069,6 +1074,8 @@
         TimedElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         AnimatedElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         LayoutElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
+
+        this.lang = xmllang;
     };
 
     /*
@@ -1153,12 +1160,14 @@
     }
 
 
-    Body.prototype.initFromNode = function (doc, node, errorHandler) {
+    Body.prototype.initFromNode = function (doc, node, xmllang, errorHandler) {
         StyledElement.prototype.initFromNode.call(this, doc, null, node, errorHandler);
         TimedElement.prototype.initFromNode.call(this, doc, null, node, errorHandler);
         AnimatedElement.prototype.initFromNode.call(this, doc, null, node, errorHandler);
         LayoutElement.prototype.initFromNode.call(this, doc, null, node, errorHandler);
         ContainerElement.prototype.initFromNode.call(this, doc, null, node, errorHandler);
+
+        this.lang = xmllang;
     };
 
     /*
@@ -1169,12 +1178,14 @@
         ContentElement.call(this, 'div');
     }
 
-    Div.prototype.initFromNode = function (doc, parent, node, errorHandler) {
+    Div.prototype.initFromNode = function (doc, parent, node, xmllang, errorHandler) {
         StyledElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         TimedElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         AnimatedElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         LayoutElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         ContainerElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
+
+        this.lang = xmllang;
     };
 
     /*
@@ -1185,12 +1196,14 @@
         ContentElement.call(this, 'p');
     }
 
-    P.prototype.initFromNode = function (doc, parent, node, errorHandler) {
+    P.prototype.initFromNode = function (doc, parent, node, xmllang, errorHandler) {
         StyledElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         TimedElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         AnimatedElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         LayoutElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         ContainerElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
+
+        this.lang = xmllang;
     };
 
     /*
@@ -1201,7 +1214,7 @@
         ContentElement.call(this, 'span');
     }
 
-    Span.prototype.initFromNode = function (doc, parent, node, xmlspace, errorHandler) {
+    Span.prototype.initFromNode = function (doc, parent, node, xmllang, xmlspace, errorHandler) {
         StyledElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         TimedElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         AnimatedElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
@@ -1209,6 +1222,7 @@
         ContainerElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
 
         this.space = xmlspace;
+        this.lang = xmllang;
     };
 
     /*
@@ -1219,11 +1233,12 @@
         ContentElement.call(this, 'span');
     }
 
-    AnonymousSpan.prototype.initFromText = function (doc, parent, text, xmlspace, errorHandler) {
+    AnonymousSpan.prototype.initFromText = function (doc, parent, text, xmllang, xmlspace, errorHandler) {
         TimedElement.prototype.initFromNode.call(this, doc, parent, null, errorHandler);
 
         this.text = text;
         this.space = xmlspace;
+        this.lang = xmllang;
     };
 
     /*
@@ -1234,9 +1249,11 @@
         ContentElement.call(this, 'br');
     }
 
-    Br.prototype.initFromNode = function (doc, parent, node, errorHandler) {
+    Br.prototype.initFromNode = function (doc, parent, node, xmllang, errorHandler) {
         LayoutElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
         TimedElement.prototype.initFromNode.call(this, doc, parent, node, errorHandler);
+
+        this.lang = xmllang;
     };
 
     /*
@@ -1304,10 +1321,12 @@
         AnimatedElement.call(r, []);
         TimedElement.call(r, 0, Number.POSITIVE_INFINITY, null);
 
+        this.lang = doc.xmllang;
+
         return r;
     };
 
-    Region.prototype.initFromNode = function (doc, node, errorHandler) {
+    Region.prototype.initFromNode = function (doc, node, xmllang, errorHandler) {
         IdentifiedElement.prototype.initFromNode.call(this, doc, null, node, errorHandler);
         TimedElement.prototype.initFromNode.call(this, doc, null, node, errorHandler);
         AnimatedElement.prototype.initFromNode.call(this, doc, null, node, errorHandler);
@@ -1319,6 +1338,10 @@
         /* remember referential styles for merging after nested styling is processed*/
 
         this.styleRefs = elementGetStyleRefs(node);
+
+        /* xml:lang */
+
+        this.lang = xmllang;
     };
 
     /*
