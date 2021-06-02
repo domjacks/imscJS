@@ -10594,11 +10594,6 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                 var r = element.getBoundingClientRect();
 
-                /* skip if span is not displayed */
-
-                if (r.height === 0 || r.width === 0) {
-                    return;
-                }
                 var edges = rect2edges(r, context);
 
                 if (llist.length === 0 ||
