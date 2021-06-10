@@ -1760,7 +1760,30 @@ var isd = createCommonjsModule(function (module, exports) {
 
         /* Filter body contents - Only process what we need within the offset and discard regions not applicable to the content */
         var body = {};
-        var activeRegions = new Set();
+        var activeRegions = {};
+
+        /* gather any regions that might have showBackground="always" and show a background */
+        var initialShowBackground = tt.head.styling.initials[imscStyles.byName.showBackground.qname];
+        var initialbackgroundColor = tt.head.styling.initials[imscStyles.byName.backgroundColor.qname];
+        for (var layout_child in tt.head.layout.regions)
+        {
+            if (tt.head.layout.regions.hasOwnProperty(layout_child)) {
+                var region = tt.head.layout.regions[layout_child];
+                var showBackground = region.styleAttrs[imscStyles.byName.showBackground.qname] || initialShowBackground;
+                var backgroundColor = region.styleAttrs[imscStyles.byName.backgroundColor.qname] || initialbackgroundColor;
+                activeRegions[region.id] = (
+                    (showBackground === 'always' || showBackground === undefined) &&
+                    backgroundColor !== undefined &&
+                    !(offset < region.begin || offset >= region.end)
+                    );
+            }
+        }
+
+        /* If the body specifies a region, catch it, since no filtered content will */
+        /* likely specify the region. */
+        if (tt.body && tt.body.regionID) {
+            activeRegions[tt.body.regionID] = true;
+        }
 
         function filter(offset, element) {
             function offsetFilter(element) {
@@ -1779,7 +1802,7 @@ var isd = createCommonjsModule(function (module, exports) {
                 element.contents.filter(offsetFilter).forEach(function (el) {
                     var filteredElement = filter(offset, el);
                     if (filteredElement.regionID) {
-                        activeRegions.add(filteredElement.regionID);
+                        activeRegions[filteredElement.regionID] = true;
                     }
         
                     if (filteredElement !== null) {
@@ -1792,27 +1815,32 @@ var isd = createCommonjsModule(function (module, exports) {
             }
         }
 
-        body = filter(offset, tt.body);
+        if (tt.body !== null) {
+            body = filter(offset, tt.body);
+        } else {
+            body = null;
+        }
 
         /* rewritten TTML will always have a default - this covers it. because the region is defaulted to "" */
-        if (activeRegions.size === 0 && tt.head.layout.regions.hasOwnProperty("")) {
-            activeRegions.add("");
+        if (activeRegions[""] !== undefined) {
+            activeRegions[""] = true;
         }
-        
+
         /* process regions */      
+        for (var regionID in activeRegions) {
+            if (activeRegions[regionID]) {
+                /* post-order traversal of the body tree per [construct intermediate document] */
 
-        activeRegions.forEach(function (regionID) {
-            /* post-order traversal of the body tree per [construct intermediate document] */
+                var c = isdProcessContentElement(tt, offset, tt.head.layout.regions[regionID], body, null, '', tt.head.layout.regions[regionID], errorHandler, context);
 
-            var c = isdProcessContentElement(tt, offset, tt.head.layout.regions[regionID], body, null, '', tt.head.layout.regions[regionID], errorHandler, context);
+                if (c !== null) {
 
-            if (c !== null) {
+                    /* add the region to the ISD */
 
-                /* add the region to the ISD */
-
-                isd.contents.push(c.element);
+                    isd.contents.push(c.element);
+                }
             }
-        });
+        }
 
         return isd;
     };
@@ -11858,8 +11886,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
         /* paragraph processing */
         /* TODO: linePadding only supported for horizontal scripts */
 
-        if ((context.lp || context.mra || context.flg || context.ruby || context.textEmphasis || context.rubyReserve) &&
-                isd_element.kind === "p") {
+        if (isd_element.kind === "p") {
 
             constructLineList(context, proc_e, linelist, null);
 
@@ -11922,19 +11949,20 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
             }
 
+            mergeSpans(linelist); // The earlier we can do this the less processing there will be.
+
             /* fill line gaps linepadding */
 
             if (context.flg) {
 
                 var par_edges = rect2edges(proc_e.getBoundingClientRect(), context);
 
-                applyFillLineGap(linelist, par_edges.before, par_edges.after, context,proc_e);
+                applyFillLineGap(linelist, par_edges.before, par_edges.after, context);
 
                 context.flg = null;
 
             }
 
-            mergeSpans(linelist);
         }
 
 
@@ -11999,22 +12027,79 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
             }
         }
+
+        // Copy backgroundColor to each span so that fillLineGap will apply padding to elements with the right background
+        var thisNode, ancestorBackgroundColor;
+        var clearTheseBackgrounds = [];
+
+        for (var l = 0; l < lineList.length; l++) {
+
+            for (var el = 0; el < lineList[l].elements.length; el++) {
+
+                thisNode = lineList[l].elements[el].node;
+                ancestorBackgroundColor = getSpanAncestorColor(thisNode, clearTheseBackgrounds, false);
+
+                if (ancestorBackgroundColor) {
+
+                    thisNode.style.backgroundColor = ancestorBackgroundColor;
+
+                }
+            }
+        }
+
+        for (var bi = 0; bi < clearTheseBackgrounds.length; bi++) {
+
+            clearTheseBackgrounds[bi].style.backgroundColor = "";
+
+        }
+
+    }
+
+    function getSpanAncestorColor(element, ancestorList, isAncestor) {
+
+        if (element.style.backgroundColor) {
+
+            if (isAncestor && !ancestorList.includes(element)) {
+
+                ancestorList.push(element);
+
+            }
+            return element.style.backgroundColor;
+
+        } else {
+
+            if (element.parentElement.nodeName === "SPAN") {
+
+                return getSpanAncestorColor(element.parentElement, ancestorList, true);
+
+            }
+
+        }
+
+        return undefined;
     }
 
     function spanMerge(first, second) {
-        if (first.tagName === "SPAN" && second.tagName === "SPAN" && first._isd_element === second._isd_element) {
-            first.textContent += second.textContent;
 
-            for (var i = 0; i < second.style.length; i++) {
-                var styleName = second.style[i];
-                if (styleName.indexOf("border") >= 0 || styleName.indexOf("padding") >= 0) {
-                    first.style[styleName] = second.style[styleName];
+        if (first.tagName === "SPAN" && 
+            second.tagName === "SPAN" &&
+            first._isd_element === second._isd_element) {
+
+                first.textContent += second.textContent;
+
+                for (var i = 0; i < second.style.length; i++) {
+
+                    var styleName = second.style[i];
+                    if (styleName.indexOf("border") >= 0 || styleName.indexOf("padding") >= 0) {
+
+                        first.style[styleName] = second.style[styleName];
+
+                    }
                 }
-            }
 
-            second.parentElement.removeChild(second);
-            return true;
-        }
+                second.parentElement.removeChild(second);
+                return true;
+            }
 
         return false;
     }
@@ -12035,37 +12120,35 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
             if (l !== 0) {
 
                 if (context.ipd === "lr") {
+
+                    se.node.marginLeft = negpadpxlen;
                     se.node.style.paddingLeft = pospadpxlen;
+
                 } else if (context.ipd === "rl") {
-// Work out what this should be similar to lr
-                    se.node.style.borderRightColor = se.bgcolor || "#00000000";
-                    se.node.style.borderRightStyle = "solid";
-                    se.node.style.borderRightWidth = pospadpxlen;
+
+                    se.node.style.paddingRight = pospadpxlen;
                     se.node.style.marginRight = negpadpxlen;
 
                 } else if (context.ipd === "tb") {
 
-                    se.node.style.borderTopColor = se.bgcolor || "#00000000";
-                    se.node.style.borderTopStyle = "solid";
-                    se.node.style.borderTopWidth = pospadpxlen;
+                    se.node.style.paddingTop = pospadpxlen;
                     se.node.style.marginTop = negpadpxlen;
 
                 }
 
                 if (context.ipd === "lr") {
+
                     ee.node.style.paddingRight = pospadpxlen;
+                    ee.node.style.marginRight = negpadpxlen;
+
                 } else if (context.ipd === "rl") {
-// Work out what this should be similar to lr
-                    ee.node.style.borderLeftColor = ee.bgcolor || "#00000000";
-                    ee.node.style.borderLeftStyle = "solid";
-                    ee.node.style.borderLeftWidth = pospadpxlen;
+
+                    ee.node.style.paddingLeft = pospadpxlen;
                     ee.node.style.marginLeft = negpadpxlen;
 
                 } else if (context.ipd === "tb") {
 
-                    ee.node.style.borderBottomColor = ee.bgcolor || "#00000000";
-                    ee.node.style.borderBottomStyle = "solid";
-                    ee.node.style.borderBottomWidth = pospadpxlen;
+                    ee.node.style.paddingBottom = pospadpxlen;
                     ee.node.style.marginBottom = negpadpxlen;
 
                 }
@@ -12281,80 +12364,38 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
             /* compute frontier between lines */
 
-            var maxPad = 0;
-
             var frontier;
 
             if (i === 0) {
 
-                frontier = par_before;
+                frontier = Math.round(par_before);
 
             } else if (i === lineList.length) {
 
-                frontier = par_after;
+                frontier = Math.round(par_after);
 
             } else {
-                // apply to the between adjustment just to the longest one
-                var thisWidth = Math.abs(lineList[i].end - lineList[i].start);
-                var previousWidth = Math.abs(lineList[i-1].end - lineList[i-1].start);
-                if (thisWidth>previousWidth) {
-                    frontier = lineList[i].before;
-                } else {
-                    frontier = lineList[i - 1].after + maxPad;
-                }
+
+                frontier = Math.round((lineList[i - 1].after + lineList[i].before) / 2);
 
             }
 
-            var border;
+            var padding;
             var l,thisNode;
-            var pad;
-
-            /* current element */
-
-            var e;
 
             /* before line */
 
             if (i > 0) {
-                for (var j = 0; j < lineList[i - 1].elements.length; j++) {
-
-                    if (lineList[i - 1].elements[j].bgcolor === null)
-                        continue;
-
-                    e = lineList[i - 1].elements[j];
-
-                    if (s * (e.after - frontier) < 0) {
-
-                        pad = Math.abs(frontier - e.after);
-
-                        if (pad>maxPad) {
-                            maxPad=pad;
-                        }
-                    }
-                }
-                thisNode=element.getElementsByTagName("span")[i];
-                if (!lineList[i] || thisNode.childElementCount==lineList[i].elements.length) {
-// this works for m000sm34
-                    if (thisNode.style.borderBottom=="") {
-                        if (context.bpd === "lr") {
-                            thisNode.style.paddingRight = maxPad+"px";
-                        } else if (context.bpd === "rl") {
-                            thisNode.style.paddingLeft = maxPad+"px";
-                        } else if (context.bpd === "tb") {
-                            thisNode.style.paddingBottom = maxPad+"px";
-                        }
-                    }
-                } else {
-// this works for p08m5t9c with regions
+                if (lineList[i-1]) {
                     for (l=0;l<lineList[i-1].elements.length;l++) {
-                        thisNode=lineList[i-1].elements[l];
-                        border=maxPad+"px solid "+thisNode.bgcolor;
+                        thisNode = lineList[i-1].elements[l];
+                        padding = s*(frontier-thisNode.after) + "px";
                         if (context.bpd === "lr") {
-                            thisNode.node.style.borderRight = border;
+                            thisNode.node.style.paddingRight = padding;
                         } else if (context.bpd === "rl") {
-                            thisNode.node.style.borderLeft = border;
+                            thisNode.node.style.paddingLeft = padding;
                         } else if (context.bpd === "tb") {
-                            thisNode.node.style.borderBottom = border;
+                            thisNode.node.style.paddingBottom = padding;
                         }
                     }
                 }
@@ -12362,51 +12403,18 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
             /* after line */
 
             if (i < lineList.length) {
-                maxPad = 0;
-                for (var k = 0; k < lineList[i].elements.length; k++) {
 
-                    e = lineList[i].elements[k];
-
-                    if (e.bgcolor === null)
-                        continue;
-
-                    if (s * (e.before - frontier) > 0) {
-
-                        pad = Math.abs(e.before - frontier);
-
-                        if (pad>maxPad) {
-                            maxPad = pad;
-                        }
-//                        e.node.style.backgroundColor = e.bgcolor;
-                    }
-                }
-
-                thisNode=element.getElementsByTagName("span")[i];
-                if (thisNode.childElementCount==lineList[i].elements.length) {
-// this works for m000sm34
+                for (l=0;l<lineList[i].elements.length;l++) {
+                    thisNode=lineList[i].elements[l];
+                    padding = s * (thisNode.before - frontier) + "px";
                     if (context.bpd === "lr") {
-                        thisNode.style.paddingLeft = maxPad+"px";
+                        thisNode.node.style.paddingLeft = padding;
                     } else if (context.bpd === "rl") {
-                        thisNode.style.paddingRight = maxPad+"px";
+                        thisNode.node.style.paddingRight = padding;
                     } else if (context.bpd === "tb") {
-                        thisNode.style.paddingTop = maxPad+"px";
-                    }
-                } else {
-// this works for p08m5t9c with regions
-
-                    for (l=0;l<lineList[i].elements.length;l++) {
-                        thisNode=lineList[i].elements[l];
-                        border=maxPad+"px solid "+thisNode.bgcolor;
-                        if (context.bpd === "lr") {
-                            thisNode.node.style.borderLeft = border;
-                        } else if (context.bpd === "rl") {
-                            thisNode.node.style.borderRight = border;
-                        } else if (context.bpd === "tb") {
-                            thisNode.node.style.borderTop = border;
-                        }
+                        thisNode.node.style.paddingTop = padding;
                     }
                 }
-
             }
 
         }
