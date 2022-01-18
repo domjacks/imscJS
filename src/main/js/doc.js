@@ -1100,7 +1100,14 @@
     }
 
     LayoutElement.prototype.initFromNode = function (doc, parent, node, errorHandler) {
-        this.regionID = elementGetRegionID(node);
+        var region = elementGetRegionID(node);
+        if (region) {
+            if (doc.head.layout.regions[region]) {
+                this.regionID = region;
+            } else {
+                reportError(errorHandler, "Cannot find specified region: " + region);
+            }
+        }
     };
 
     function StyledElement(styleAttrs) {
