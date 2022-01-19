@@ -1105,7 +1105,21 @@
             if (doc.head.layout.regions[region]) {
                 this.regionID = region;
             } else {
+                var defaultRegion;
+                for (var r in doc.head.layout.regions) {
+                    if (doc.head.layout.regions.hasOwnProperty(r) && doc.head.layout.regions[r].isDefaultRegion) {
+                        defaultRegion = doc.head.layout.regions[r];
+                        break;
+                    }
+                }
+                if (!defaultRegion) {
+                    defaultRegion = Region.prototype.createDefaultRegion(doc, errorHandler);
+                    doc.head.layout.regions[defaultRegion.id] = defaultRegion;
+                }
+
                 reportError(errorHandler, "Cannot find specified region: " + region);
+
+                //Leave regionID unset to use this default region.
             }
         }
     };
@@ -1330,6 +1344,7 @@
 
         this.lang = doc.xmllang;
 
+        r.isDefaultRegion = true;
         return r;
     };
 
