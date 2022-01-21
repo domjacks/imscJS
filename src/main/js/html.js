@@ -170,10 +170,14 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
         element.appendChild(rootcontainer);
 
-        for (var i in isd.contents) {
-            if (isd.contents.hasOwnProperty(i)) {
+        if ("contents" in isd) {
+
+            for (var i = 0; i < isd.contents.length; i++) {
+
                 processElement(context, rootcontainer, isd.contents[i], isd);
+
             }
+
         }
 
         return context.currentISDState;
@@ -343,17 +347,16 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
         /* tranform TTML styles to CSS styles */
 
-        for (var i in STYLING_MAP_DEFS) {
-            if (STYLING_MAP_DEFS.hasOwnProperty(i)) {
-                var sm = STYLING_MAP_DEFS[i];
+        for (var i = 0; i < STYLING_MAP_DEFS.length; i++) {
 
-                var attr = isd_element.styleAttrs[sm.qname];
+            var sm = STYLING_MAP_DEFS[i];
 
-                if (attr !== undefined && sm.map !== null) {
+            var attr = isd_element.styleAttrs[sm.qname];
 
-                    sm.map(context, e, isd_element, attr);
+            if (attr !== undefined && sm.map !== null) {
 
-                }
+                sm.map(context, e, isd_element, attr);
+
             }
 
         }
@@ -463,7 +466,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                     var cc = isd_element.text.charCodeAt(j);
 
-                    if (cc < 0xD800 || cc > 0xDBFF || j === isd_element.text.length-1) {
+                    if (cc < 0xD800 || cc > 0xDBFF || j === isd_element.text.length - 1) {
 
                         /* wrap the character(s) in a span unless it is a high surrogate */
 
@@ -494,10 +497,14 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
         /* process the children of the ISD element */
 
-        for (var k in isd_element.contents) {
-            if (isd_element.contents.hasOwnProperty(k)) {
+        if ("contents" in isd_element) {
+
+            for (var k = 0; k < isd_element.contents.length; k++) {
+
                 processElement(context, proc_e, isd_element.contents[k], isd_element);
+
             }
+
         }
 
         /* list of lines */
@@ -579,7 +586,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                 var par_edges = rect2edges(proc_e.getBoundingClientRect(), context);
 
-                applyFillLineGap(linelist, par_edges.before, par_edges.after, context,proc_e);
+                applyFillLineGap(linelist, par_edges.before, par_edges.after, context, proc_e);
 
                 context.flg = null;
 
@@ -636,15 +643,20 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
             var line = lineList[i];
 
             for (var j = 1; j < line.elements.length;) {
-                var previous = line.elements[j-1];
+
+                var previous = line.elements[j - 1];
                 var span = line.elements[j];
 
                 if (spanMerge(previous.node, span.node)) {
+
                     //removed from DOM by spanMerge(), remove from the list too.
                     line.elements.splice(j, 1);
                     continue;
+
                 } else {
+
                     j++;
+
                 }
 
             }
@@ -703,7 +715,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
     function spanMerge(first, second) {
 
-        if (first.tagName === "SPAN" && 
+        if (first.tagName === "SPAN" &&
             second.tagName === "SPAN" &&
             first._isd_element === second._isd_element) {
 
@@ -712,7 +724,9 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                 for (var i = 0; i < second.style.length; i++) {
 
                     var styleName = second.style[i];
-                    if (styleName.indexOf("border") >= 0 || styleName.indexOf("padding") >= 0) {
+                    if (styleName.indexOf("border") >= 0 || 
+                        styleName.indexOf("padding") >= 0 ||
+                        styleName.indexOf("margin") >= 0) {
 
                         first.style[styleName] = second.style[styleName];
 
@@ -720,6 +734,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                 }
 
                 second.parentElement.removeChild(second);
+
                 return true;
             }
 
@@ -728,12 +743,11 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
     function applyLinePadding(lineList, lp, context) {
 
-        for (var i=0;i<lineList.length;i++) {
+        if (lineList === null) return;
+
+        for (var i = 0; i < lineList.length; i++) {
+
             var l = lineList[i].elements.length;
-
-            var se = lineList[i].elements[lineList[i].start_elem];
-
-            var ee = lineList[i].elements[lineList[i].end_elem];
 
             var pospadpxlen = Math.ceil(lp) + "px";
 
@@ -741,9 +755,28 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
             if (l !== 0) {
 
+                var se = lineList[i].elements[lineList[i].start_elem];
+
+                var ee = lineList[i].elements[lineList[i].end_elem];
+
+                if (se === ee) {
+
+                    // Check to see if there's any background at all
+                    elementBoundingRect = se.node.getBoundingClientRect();
+                    
+                    if (elementBoundingRect.width == 0 || elementBoundingRect.height == 0) {
+
+                        // There's no background on this line, move on.
+                        continue;
+
+                    }
+
+                }
+
+                // Start element
                 if (context.ipd === "lr") {
 
-                    se.node.marginLeft = negpadpxlen;
+                    se.node.style.marginLeft = negpadpxlen;
                     se.node.style.paddingLeft = pospadpxlen;
 
                 } else if (context.ipd === "rl") {
@@ -758,10 +791,11 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                 }
 
+                // End element
                 if (context.ipd === "lr") {
 
-                    ee.node.style.paddingRight = pospadpxlen;
                     ee.node.style.marginRight = negpadpxlen;
+                    ee.node.style.paddingRight = pospadpxlen;
 
                 } else if (context.ipd === "rl") {
 
@@ -957,7 +991,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                     /* copy specified style properties from the sibling ruby container */
                     
-                    for(var k = 0; k < sib.style.length; k++) {
+                    for (var k = 0; k < sib.style.length; k++) {
 
                         ruby.style.setProperty(sib.style.item(k), sib.style.getPropertyValue(sib.style.item(k)));
 
@@ -979,6 +1013,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
     }
 
     function applyFillLineGap(lineList, par_before, par_after, context, element) {
+
         /* positive for BPD = lr and tb, negative for BPD = rl */
         var s = Math.sign(par_after - par_before);
 
@@ -1006,35 +1041,51 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
             var l,thisNode;
 
             /* before line */
-
             if (i > 0) {
+
                 if (lineList[i-1]) {
-                    for (l=0;l<lineList[i-1].elements.length;l++) {
-                        thisNode = lineList[i-1].elements[l];
+
+                    for (l = 0; l < lineList[i - 1].elements.length; l++) {
+
+                        thisNode=lineList[i - 1].elements[l];
                         padding = s*(frontier-thisNode.after) + "px";
+
                         if (context.bpd === "lr") {
+
                             thisNode.node.style.paddingRight = padding;
+
                         } else if (context.bpd === "rl") {
+
                             thisNode.node.style.paddingLeft = padding;
+
                         } else if (context.bpd === "tb") {
+
                             thisNode.node.style.paddingBottom = padding;
+
                         }
                     }
                 }
             }
             /* after line */
-
             if (i < lineList.length) {
 
-                for (l=0;l<lineList[i].elements.length;l++) {
-                    thisNode=lineList[i].elements[l];
+                for (l = 0; l < lineList[i].elements.length; l++) {
+
+                    thisNode = lineList[i].elements[l];
                     padding = s * (thisNode.before - frontier) + "px";
+
                     if (context.bpd === "lr") {
+
                         thisNode.node.style.paddingLeft = padding;
+
                     } else if (context.bpd === "rl") {
+
                         thisNode.node.style.paddingRight = padding;
+
                     } else if (context.bpd === "tb") {
+
                         thisNode.node.style.paddingTop = padding;
+
                     }
                 }
             }
@@ -1417,52 +1468,50 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                         attr = context.options.fontFamily.split(",");
                     }
 
-                    for (var i in attr) {
-                        if (attr[i].hasOwnProperty(i)) {
-                            attr[i] = attr[i].trim();
+                    for (var i = 0; i < attr.length; i++) {
+                        attr[i] = attr[i].trim();
 
-                            if (attr[i] === "monospaceSerif") {
+                        if (attr[i] === "monospaceSerif") {
 
-                                rslt.push("Courier New");
-                                rslt.push('"Liberation Mono"');
-                                rslt.push("Courier");
-                                rslt.push("monospace");
+                            rslt.push("Courier New");
+                            rslt.push('"Liberation Mono"');
+                            rslt.push("Courier");
+                            rslt.push("monospace");
 
-                            } else if (attr[i] === "proportionalSansSerif" || attr[i] === "default") {
+                        } else if (attr[i] === "proportionalSansSerif" || attr[i] === "default") {
 
-                                rslt.push("Arial");
-                                rslt.push("Helvetica");
-                                rslt.push('"Liberation Sans"');
-                                rslt.push("sans-serif");
+                            rslt.push("Arial");
+                            rslt.push("Helvetica");
+                            rslt.push('"Liberation Sans"');
+                            rslt.push("sans-serif");
 
-                            } else if (attr[i] === "monospace") {
-                               
-                                rslt.push("monospace");
+                        } else if (attr[i] === "monospace") {
 
-                            } else if (attr[i] === "sansSerif") {
+                            rslt.push("monospace");
 
-                                rslt.push("sans-serif");
+                        } else if (attr[i] === "sansSerif") {
 
-                            } else if (attr[i] === "serif") {
+                            rslt.push("sans-serif");
 
-                                rslt.push("serif");
+                        } else if (attr[i] === "serif") {
 
-                            } else if (attr[i] === "monospaceSansSerif") {
+                            rslt.push("serif");
 
-                                rslt.push("Consolas");
-                                rslt.push("monospace");
+                        } else if (attr[i] === "monospaceSansSerif") {
 
-                            } else if (attr[i] === "proportionalSerif") {
+                            rslt.push("Consolas");
+                            rslt.push("monospace");
 
-                                rslt.push("serif");
+                        } else if (attr[i] === "proportionalSerif") {
 
-                            } else {
+                            rslt.push("serif");
 
-                                rslt.push(attr[i]);
+                        } else {
 
-                            }
+                            rslt.push(attr[i]);
 
                         }
+
                     }
 
                     // prune later duplicates we may have inserted 
@@ -1473,6 +1522,23 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                                 unique.push(rslt[fi]);
                             }
                         }
+                        rslt = unique;
+                    }
+
+                    // prune later duplicates we may have inserted 
+                    if (rslt.length > 0) {
+
+                        var unique=[rslt[0]];
+
+                        for (var fi = 1; fi < rslt.length; fi++) {
+
+                            if (unique.indexOf(rslt[fi]) == -1) {
+
+                                unique.push(rslt[fi]);
+
+                            }
+                        }
+
                         rslt = unique;
                     }
 
@@ -1754,20 +1820,18 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                         if (attr !== "none") {
 
-                            for (var i in attr) {
-                                if (attr.hasOwnProperty(i)) {
+                            for (var i = 0; i < attr.length; i++) {
 
-                                    s.push(attr[i].x_off.toUsedLength(context.w, context.h) + "px " +
-                                        attr[i].y_off.toUsedLength(context.w, context.h) + "px " +
-                                        attr[i].b_radius.toUsedLength(context.w, context.h) + "px " +
-                                        "rgba(" +
-                                        attr[i].color[0].toString() + "," +
-                                        attr[i].color[1].toString() + "," +
-                                        attr[i].color[2].toString() + "," +
-                                        (attr[i].color[3] / 255).toString() +
-                                        ")"
-                                        );
-                                }
+                                s.push(attr[i].x_off.toUsedLength(context.w, context.h) + "px " +
+                                    attr[i].y_off.toUsedLength(context.w, context.h) + "px " +
+                                    attr[i].b_radius.toUsedLength(context.w, context.h) + "px " +
+                                    "rgba(" +
+                                    attr[i].color[0].toString() + "," +
+                                    attr[i].color[1].toString() + "," +
+                                    attr[i].color[2].toString() + "," +
+                                    (attr[i].color[3] / 255).toString() +
+                                    ")"
+                                );
                             }
 
                         }
@@ -1886,10 +1950,10 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
     var STYLMAP_BY_QNAME = {};
 
-    for (var i in STYLING_MAP_DEFS) {
-        if (STYLING_MAP_DEFS.hasOwnProperty(i)) {
-            STYLMAP_BY_QNAME[STYLING_MAP_DEFS[i].qname] = STYLING_MAP_DEFS[i];
-        }
+    for (var i = 0; i < STYLING_MAP_DEFS.length; i++) {
+
+        STYLMAP_BY_QNAME[STYLING_MAP_DEFS[i].qname] = STYLING_MAP_DEFS[i];
+
     }
 
     /* CSS property names */

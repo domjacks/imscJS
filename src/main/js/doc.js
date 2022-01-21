@@ -99,9 +99,11 @@
                 /* flatten chained referential styling */
 
                 for (var sid in estack[0].styles) {
-                    if (estack[0].styles.hasOwnProperty(sid)) {
-                        mergeChainedStyles(estack[0], estack[0].styles[sid], errorHandler);
-                    }
+
+                    if (! estack[0].styles.hasOwnProperty(sid)) continue;
+
+                    mergeChainedStyles(estack[0], estack[0].styles[sid], errorHandler);
+
                 }
 
             } else if (estack[0] instanceof P || estack[0] instanceof Span) {
@@ -377,9 +379,11 @@
                         ini.initFromNode(node, errorHandler);
                         
                         for (var qn in ini.styleAttrs) {
-                            if (ini.styleAttrs.hasOwnProperty(qn)) {
-                                doc.head.styling.initials[qn] = ini.styleAttrs[qn];
-                            }
+
+                            if (! ini.styleAttrs.hasOwnProperty(qn)) continue;
+                            
+                            doc.head.styling.initials[qn] = ini.styleAttrs[qn];
+                            
                         }
                         
                         estack.unshift(ini);
@@ -626,9 +630,9 @@
         for (var i in doc.head.layout.regions) {
             if (doc.head.layout.regions.hasOwnProperty(i)) {
                 hasRegions = true;
-
                 break;
             }
+
         }
 
         if (!hasRegions) {
@@ -644,9 +648,11 @@
         /* resolve desired timing for regions */
 
         for (var region_i in doc.head.layout.regions) {
-            if (doc.head.layout.regions.hasOwnProperty(region_i)) {
-                resolveTiming(doc, doc.head.layout.regions[region_i], null, null);
-            }
+
+            if (! doc.head.layout.regions.hasOwnProperty(region_i)) continue;
+
+            resolveTiming(doc, doc.head.layout.regions[region_i], null, null);
+
         }
 
         /* resolve desired timing for content elements */
@@ -757,22 +763,25 @@
 
         var s = null;
 
-        for (var set_i in element.sets) {
-            if (element.sets.hasOwnProperty(set_i)) {
+        if ("sets" in element) {
+
+            for (var set_i = 0; set_i < element.sets.length; set_i++) {
                 resolveTiming(doc, element.sets[set_i], s, element);
 
                 if (element.timeContainer === "seq") {
-                    
+
                     implicit_end = element.sets[set_i].end;
-                    
+
                 } else {
-                    
+
                     implicit_end = Math.max(implicit_end, element.sets[set_i].end);
-                    
+
                 }
 
                 s = element.sets[set_i];
+
             }
+
         }
 
         if (!('contents' in element)) {
@@ -793,24 +802,22 @@
 
             }
 
-        } else {
+        } else if ("contents" in element) {
+ 
+            for (var content_i = 0; content_i < element.contents.length; content_i++) {
+                resolveTiming(doc, element.contents[content_i], s, element);
 
-            for (var content_i in element.contents) {
-                if (element.contents.hasOwnProperty(content_i)) {
-                    resolveTiming(doc, element.contents[content_i], s, element);
+                if (element.timeContainer === "seq") {
 
-                    if (element.timeContainer === "seq") {
-                       
-                        implicit_end = element.contents[content_i].end;
-                       
-                    } else {
-                       
-                        implicit_end = Math.max(implicit_end, element.contents[content_i].end);
-                       
-                    }
-                    
-                    s = element.contents[content_i];
+                    implicit_end = element.contents[content_i].end;
+
+                } else {
+
+                    implicit_end = Math.max(implicit_end, element.contents[content_i].end);
+
                 }
+
+                s = element.contents[content_i];
             }
 
         }
@@ -1362,17 +1369,17 @@
         this.value = null;
 
         for (var qname in styles) {
-            if (styles.hasOwnProperty(qname)) {
-                if (this.qname) {
+            if (! styles.hasOwnProperty(qname)) continue;
 
-                    reportError(errorHandler, "More than one style specified on set");
-                    break;
+            if (this.qname) {
+                    
+                reportError(errorHandler, "More than one style specified on set");
+                break;
 
-                }
-
-                this.qname = qname;
-                this.value = styles[qname];
             }
+
+            this.qname = qname;
+            this.value = styles[qname];
         }
 
     };
@@ -1848,12 +1855,13 @@
     function mergeStylesIfNotPresent(from_styles, into_styles) {
 
         for (var sname in from_styles) {
-            if (from_styles.hasOwnProperty(sname)) {
-                if (sname in into_styles)
-                    continue;
+            if (! from_styles.hasOwnProperty(sname)) continue;
 
-                into_styles[sname] = from_styles[sname];
-            }
+            if (sname in into_styles)
+                continue;
+
+            into_styles[sname] = from_styles[sname];
+
         }
 
     }
