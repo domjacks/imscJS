@@ -73,7 +73,7 @@
      * @returns {Object} Opaque in-memory representation of an IMSC1 document
      */
 
-    imscDoc.fromXML = function (xmlstring, errorHandler, metadataHandler) {
+    imscDoc.fromXML = function (xmlstring, errorHandler, metadataHandler, preparse) {
         var p = sax.parser(true, {xmlns: true});
         var estack = [];
         var xmllangstack = [];
@@ -82,8 +82,10 @@
         var doc = null;
 
         p.onclosetag = function (node) {
+            if (preparse && typeof preparse.onclosetag === "function") {
+                preparse.onclosetag(node);
+            }
 
-            
             if (estack[0] instanceof Region) {
 
                 /* merge referenced styles */
@@ -183,6 +185,9 @@
         };
 
         p.ontext = function (str) {
+            if (preparse && typeof preparse.ontext === "function") {
+                preparse.ontext(str);
+            }
 
             if (estack[0] === undefined) {
 
@@ -227,6 +232,9 @@
 
 
         p.onopentag = function (node) {
+            if (preparse && typeof preparse.onopentag === "function") {
+                preparse.onopentag(node);
+            }
 
             // maintain the xml:space stack
 
