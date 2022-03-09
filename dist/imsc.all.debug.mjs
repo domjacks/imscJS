@@ -12168,7 +12168,7 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
                 if (se === ee) {
 
                     // Check to see if there's any background at all
-                    elementBoundingRect = se.node.getBoundingClientRect();
+                    var elementBoundingRect = se.node.getBoundingClientRect();
                     
                     if (elementBoundingRect.width == 0 || elementBoundingRect.height == 0) {
 
