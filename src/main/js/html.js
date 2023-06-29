@@ -753,6 +753,10 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
             var negpadpxlen = "-" + Math.ceil(lp) + "px";
 
+            if (/firefox/i.test(navigator.userAgent)) {
+                negpadpxlen = "0px";
+            }
+
             if (l !== 0) {
 
                 var se = lineList[i].elements[lineList[i].start_elem];
