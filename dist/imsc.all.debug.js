@@ -9996,6 +9996,8 @@ function config (name) {
 
 var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
+var browserIsFirefox = /firefox/i.test(navigator.userAgent);
+
 (function (imscHTML, imscNames, imscStyles, imscUtils) {
 
     /**
@@ -10741,37 +10743,38 @@ var backgroundColorAdjustSuffix = "BackgroundColorAdjust";
 
                 // Start element
                 if (context.ipd === "lr") {
-
                     se.node.style.marginLeft = negpadpxlen;
                     se.node.style.paddingLeft = pospadpxlen;
 
                 } else if (context.ipd === "rl") {
-
-                    se.node.style.paddingRight = pospadpxlen;
                     se.node.style.marginRight = negpadpxlen;
+                    se.node.style.paddingRight = pospadpxlen;
 
                 } else if (context.ipd === "tb") {
-
-                    se.node.style.paddingTop = pospadpxlen;
                     se.node.style.marginTop = negpadpxlen;
+                    se.node.style.paddingTop = pospadpxlen;
 
                 }
 
                 // End element
                 if (context.ipd === "lr") {
-
-                    ee.node.style.marginRight = negpadpxlen;
+                    //Firefox has a problem with line-breaking when a negative margin is applied.
+                    //The positioning will be wrong but don't apply when on firefox.
+                    //https://bugzilla.mozilla.org/show_bug.cgi?id=1502610
+                    if (!browserIsFirefox) {
+                        ee.node.style.marginRight = negpadpxlen;
+                    }
                     ee.node.style.paddingRight = pospadpxlen;
 
                 } else if (context.ipd === "rl") {
-
+                    if (!browserIsFirefox) {
+                        ee.node.style.marginLeft = negpadpxlen;
+                    }
                     ee.node.style.paddingLeft = pospadpxlen;
-                    ee.node.style.marginLeft = negpadpxlen;
 
                 } else if (context.ipd === "tb") {
-
-                    ee.node.style.paddingBottom = pospadpxlen;
                     ee.node.style.marginBottom = negpadpxlen;
+                    ee.node.style.paddingBottom = pospadpxlen;
 
                 }
 
