@@ -1,6 +1,6 @@
 {
     "name": "smp-imsc",
-    "description": "SMP fork of imsc js",
+    "description": "Dom's fork of imsc js",
     "version": "1.0.11",
     "publishConfig": {
         "tag": "latest"
