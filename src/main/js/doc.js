@@ -86,7 +86,7 @@
         var onOpenTagTimings = []
 
         p.onclosetag = function (node) {
-            const preTime = Date.now()
+            var preTime = Date.now()
             if (preparse && typeof preparse.onclosetag === "function") {
                 preparse.onclosetag(node);
             }
@@ -193,7 +193,7 @@
         };
 
         p.ontext = function (str) {
-            const preTime = Date.now()
+            var preTime = Date.now()
             if (preparse && typeof preparse.ontext === "function") {
                 preparse.ontext(str);
             }
@@ -243,7 +243,7 @@
 
 
         p.onopentag = function (node) {
-            const preTime = Date.now()
+            var preTime = Date.now()
             if (preparse && typeof preparse.onopentag === "function") {
                 preparse.onopentag(node);
             }
