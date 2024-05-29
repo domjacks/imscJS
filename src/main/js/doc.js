@@ -81,7 +81,12 @@
         var metadata_depth = 0;
         var doc = null;
 
+        var onCloseTagTimings = []
+        var onTextTimings = []
+        var onOpenTagTimings = []
+
         p.onclosetag = function (node) {
+            const preTime = Date.now()
             if (preparse && typeof preparse.onclosetag === "function") {
                 preparse.onclosetag(node);
             }
@@ -182,9 +187,13 @@
             // prepare for the next element
 
             estack.shift();
+
+            var endTime = Date.now() - preTime
+            onCloseTagTimings.push(endTime)
         };
 
         p.ontext = function (str) {
+            const preTime = Date.now()
             if (preparse && typeof preparse.ontext === "function") {
                 preparse.ontext(str);
             }
@@ -228,10 +237,13 @@
 
             }
 
+            var endTime = Date.now() - preTime
+            onTextTimings.push(endTime)
         };
 
 
         p.onopentag = function (node) {
+            const preTime = Date.now()
             if (preparse && typeof preparse.onopentag === "function") {
                 preparse.onopentag(node);
             }
@@ -619,6 +631,8 @@
 
             }
 
+            var endTime = Date.now() - preTime
+            onOpenTagTimings.push(endTime)
         };
 
         // parse the document
@@ -679,6 +693,9 @@
             pushBackgroundColorDown(doc.body);
         }
 
+        console.log('onCloseTagTimings:', onCloseTagTimings)
+        console.log('onTextTimings:', onTextTimings)
+        console.log('onOpenTagTimings:', onOpenTagTimings)
         return doc;
     };
 
